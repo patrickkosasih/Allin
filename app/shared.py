@@ -14,6 +14,7 @@ from pygame.math import Vector2
 from pygame.event import Event
 from typing import Callable, Optional, Iterable, Generator
 import time
+import sys
 
 from app.tools.colors import hsv_factor, rand_color
 from app.tools.draw import draw_rounded_rect
@@ -22,8 +23,12 @@ from app.tools.draw import draw_rounded_rect
 """
 Shared constants
 """
-SAVE_FOLDER_PATH = os.path.join(os.getenv("localappdata"), "Allin") if os.getenv("localappdata") else "./save"
+VERSION_ID = 5000
+VERSION_TEXT = "Allin v0.5.0"
+if not getattr(sys, "frozen", False):
+    VERSION_TEXT += " (Uncompiled/Development Build)"
 
+SAVE_FOLDER_PATH = os.path.join(os.getenv("localappdata"), "Allin") if os.getenv("localappdata") else "./save"
 if not os.path.isdir(SAVE_FOLDER_PATH):
     os.mkdir(SAVE_FOLDER_PATH)
 
@@ -129,7 +134,7 @@ class Layer:
 
 
 """
-% to px conversion functions
+Legacy % to px conversion functions
 """
 def w_percent_to_px(x: float) -> float:
     return 0.01 * x * pygame.display.get_window_size()[0]
@@ -143,6 +148,9 @@ def percent_to_px(x: float, y: float) -> tuple[float, float]:
     return w_percent_to_px(x), h_percent_to_px(y)
 
 
+"""
+Other useful functions
+"""
 def elementwise_mult(a: Iterable, b: Iterable) -> Generator:
     return (x * y for x, y in zip(a, b))
 

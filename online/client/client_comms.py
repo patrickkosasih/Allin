@@ -7,6 +7,8 @@ The client comms module is the bridge for the game client to the server.
 import socket
 import threading
 
+import pygame.event
+
 from online import packets
 
 
@@ -43,7 +45,8 @@ class ClientComms:
         except (socket.error, OSError) as e:
             print(f"Failed to connect to {HOST}: {e}")
 
-        ClientComms.connecting = False
+        finally:
+            ClientComms.connecting = False
 
     @staticmethod
     def disconnect():
@@ -63,9 +66,9 @@ class ClientComms:
 
                 if not packet:
                     break
-                elif type(packet) == packets.MessagePacket:
+                elif type(packet) == packets.Message:
                     # pygame.event.post(pygame.event.Event(pygame.USEREVENT, packet=packet))
-                    packet: packets.MessagePacket
+                    packet: packets.Message
                     print(f"Message from server: {packet.message}")
 
         except (ConnectionResetError, TimeoutError, OSError, EOFError):

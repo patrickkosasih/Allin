@@ -56,8 +56,8 @@ class ClientHandler(socketserver.BaseRequestHandler):
             log("Connection closed.")
 
     def handle_packet(self, packet: packets.Packet):
-        if type(packet) is packets.MessagePacket:
-            packet: packets.MessagePacket
+        if type(packet) is packets.Message:
+            packet: packets.Message
             log(f"Message received: {packet.message}")
 
 
@@ -85,9 +85,10 @@ class AllinServer(socketserver.ThreadingTCPServer):
             match command:
                 case "shutdown":
                     log("Shutting down server...")
-                    self.shutdown()
                     for client in self.clients:
                         client.request.shutdown(socket.SHUT_RDWR)
+                    self.shutdown()
+                    log("Server has been shut down.")
                     break
 
                 case "count":
@@ -99,7 +100,7 @@ class AllinServer(socketserver.ThreadingTCPServer):
 
                 case "broadcast":
                     for client in self.clients:
-                        packets.send_packet(client.request, packets.MessagePacket(message=" ".join(command_args)))
+                        packets.send_packet(client.request, packets.Message(message=" ".join(command_args)))
                     print("Message broadcasted.")
 
                 case "":

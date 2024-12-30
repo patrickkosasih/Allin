@@ -13,9 +13,6 @@ from app.widgets.widget import Widget
 
 MAIN_MENU_BUTTON_COLOR = (24, 31, 37, 169)
 
-
-VERSION_TEXT = "Allin v0.4.1"
-
 COPYRIGHT_TEXT = "Copyright (c) 2023-2024 Patrick Kosasih."
 COPYRIGHT_TEXT_SUB = "All rights reserved."
 

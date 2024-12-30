@@ -6,6 +6,7 @@ The app timer module contains classes that provides an interface to time and sch
 Instead of running a new thread, The scheduling of function calls are done synchronously to the main thread. This is
 done by updating the timer groups (the global `default_group` and other local timer groups) every game tick.
 """
+import threading
 from abc import ABC, abstractmethod
 from typing import Callable, Generator
 
@@ -138,9 +139,13 @@ class Coroutine(TimingUtility):
         """
         super().__init__(group)
 
+        self.thread_waiter: ThreadWaiter or None = None
         self.generator_iter = iter(target)
 
     def on_delay_finish(self):
+        if self.thread_waiter and not self.thread_waiter.finished:
+            return
+
         try:
             ret = next(self.generator_iter)
         except StopIteration:
@@ -151,8 +156,40 @@ class Coroutine(TimingUtility):
             pass
         elif type(ret) is int or type(ret) is float:
             self.delay_left += ret
+        elif type(ret) is ThreadWaiter:
+            self.thread_waiter = ret
         else:
             raise TypeError(f"invalid yield return value from the coroutine's generator: {ret}")
+
+
+class ThreadWaiter:
+    # TODO don't be skill issued haiya
+    def __init__(self, task: Callable, args=(), auto_start=True):
+        self._finished = False
+
+        self.task = task
+        self._args = args
+
+        self._task_thread = threading.Thread(target=self._thread_run)
+        self._task_result = None
+
+        if auto_start:
+            self.start()
+
+    def start(self):
+        self._task_thread.start()
+
+    def _thread_run(self):
+        self._task_result = self.task(*self._args)
+        self._finished = True
+
+    @property
+    def task_result(self):
+        return self._task_result
+
+    @property
+    def finished(self):
+        return self._finished
 
 
 class TimerGroup:

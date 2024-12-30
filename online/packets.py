@@ -10,8 +10,12 @@ class Packet:
 
 
 @dataclass
-class MessagePacket(Packet):
+class Message(Packet):
     message: str
+
+
+class BasicRequest(Packet):
+    command: str
 
 
 def send_packet(s: socket.socket, packet: Packet) -> None:
