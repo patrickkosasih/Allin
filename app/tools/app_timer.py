@@ -8,7 +8,7 @@ done by updating the timer groups (the global `default_group` and other local ti
 """
 import threading
 from abc import ABC, abstractmethod
-from typing import Callable, Generator
+from typing import Callable, Generator, Any
 
 
 class TimingUtility(ABC):
@@ -127,7 +127,7 @@ class Coroutine(TimingUtility):
     to wait for.
     """
 
-    def __init__(self, target: Generator[int or float, None, None], group: None or "TimerGroup" = None):
+    def __init__(self, target: Generator[int or float or "ThreadWaiter", Any, Any], group: None or "TimerGroup" = None):
         """
         Params:
 
@@ -142,14 +142,17 @@ class Coroutine(TimingUtility):
         self.thread_waiter: ThreadWaiter or None = None
         self.generator_iter = iter(target)
 
+        self.ret_value = None
+
     def on_delay_finish(self):
         if self.thread_waiter and not self.thread_waiter.finished:
             return
 
         try:
             ret = next(self.generator_iter)
-        except StopIteration:
+        except StopIteration as e:
             self.finished = True
+            self.ret_value = e.value
             return
 
         if not ret:

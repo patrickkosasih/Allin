@@ -2,20 +2,22 @@ import pickle
 from dataclasses import dataclass
 import socket
 import struct
+from typing import Any
+
+
+class PacketTypes:
+    BASIC_REQUEST = 0
+    BASIC_RESPONSE = 1
+
+    GAME_ACTION = 2
+    GAME_EVENT = 3
+    GAME_DATA = 4
 
 
 @dataclass
 class Packet:
-    pass
-
-
-@dataclass
-class Message(Packet):
-    message: str
-
-
-class BasicRequest(Packet):
-    command: str
+    packet_type: int
+    content: Any = None
 
 
 def send_packet(s: socket.socket, packet: Packet) -> None:

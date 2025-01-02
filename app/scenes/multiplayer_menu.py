@@ -8,7 +8,7 @@ from app.tools.app_timer import ThreadWaiter, Coroutine
 from app.widgets.basic.button import CircularButton, Button
 from online.client.client_comms import ClientComms
 
-from online.packets import Message
+from online.packets import Packet
 
 
 class MultiplayerMenuScene(Scene):
@@ -28,26 +28,11 @@ class MultiplayerMenuScene(Scene):
                                   text_str="oi oi oi")
 
     def test_send_thing(self):
-        # example of a thread waiter or idfk
+        def req_task():
+            ret = yield from ClientComms.send_request("echo omaygyatt")
+            print(f"result of send request: {ret}")
 
-        def thingy():
-            for i in range(3):
-                print(i)
-                time.sleep(1)
-
-            return 727
-
-        def thingy_coroutine():
-            print("calculating result of thingy()")
-
-            thread_waiter = ThreadWaiter(thingy)
-            yield thread_waiter
-
-            print(f"result of thingy() is {thread_waiter.task_result}")
-
-        Coroutine(thingy_coroutine())
-
-        # ClientComms.send_packet(Message(message=f"heyyy..... GIVE ME FISH {random.randrange(1000000)}"))
+        req_task = Coroutine(req_task())
 
     def back(self):
         self.app.change_scene_anim("mainmenu")

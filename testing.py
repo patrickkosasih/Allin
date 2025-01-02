@@ -9,6 +9,10 @@ import time
 from rules.basic import *
 from rules.game_flow import *
 
+# Comment the imports below unless you want to run the server request test.
+import app
+from online.client.client_comms import ClientComms
+
 
 class LegacyTestingGame(PokerGame):
     def __init__(self, n_players: int):
@@ -298,7 +302,23 @@ def hand_ranking_test(n_tests=10, repeat_until=0):
     print("Repeats:", i)
 
 
+def server_request_test():
+    ClientComms.connect(threaded=False)
+
+    while True:
+        message = input("> ")
+        req_iter = iter(ClientComms.send_request(message))
+
+        while True:
+            try:
+                next(req_iter)
+            except StopIteration as e:
+                print(e.value)
+                break
+
+
 if __name__ == "__main__":
-    standard_io_poker()
+    # standard_io_poker()
+    server_request_test()
     # hand_ranking_test(repeat_until=HandRanking.ROYAL_FLUSH)
     # hand_ranking_test(n_tests=25)

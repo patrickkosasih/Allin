@@ -2,8 +2,10 @@ import socket
 import socketserver
 import threading
 import datetime
+from typing import Any
 
 from online import packets
+from online.packets import PacketTypes, Packet, send_packet
 
 # HOST = socket.gethostbyname(socket.gethostname())
 HOST = "localhost"
@@ -56,9 +58,48 @@ class ClientHandler(socketserver.BaseRequestHandler):
             log("Connection closed.")
 
     def handle_packet(self, packet: packets.Packet):
-        if type(packet) is packets.Message:
-            packet: packets.Message
-            log(f"Message received: {packet.message}")
+        match packet.packet_type:
+            case PacketTypes.BASIC_REQUEST:
+                self.handle_basic_request(packet)
+
+            case PacketTypes.GAME_ACTION:
+                ...
+
+
+    def handle_basic_request(self, packet: packets.Packet):
+        if type(packet.content) is not str:
+            self.send_basic_response("error: contents of a basic request packet must be str")
+            return
+
+        log(f"Received basic request: {packet.content}")
+
+        try:
+            sep = packet.content.index(" ")
+            req_type, req_args = packet.content[:sep], packet.content[sep + 1:]
+        except ValueError:  # No space in command
+            req_type, req_args = packet.content, ""
+
+        match req_type:
+            case "echo":
+                self.send_basic_response(req_args)
+
+            case "public":
+                self.send_basic_response("here are some public rooms bruv: <list of rooms>")
+
+            case "code":
+                self.send_basic_response(f"here is some info regarding the room with code {req_args}: <some room info>")
+
+            case "join":
+                self.send_basic_response(f"you joined room {req_args}")
+
+            case "leave":
+                self.send_basic_response("you left the room")
+
+            case _:
+                self.send_basic_response("error: invalid request command")
+
+    def send_basic_response(self, content: Any):
+        send_packet(self.request, Packet(PacketTypes.BASIC_RESPONSE, content=content))
 
 
 class AllinServer(socketserver.ThreadingTCPServer):
@@ -98,10 +139,10 @@ class AllinServer(socketserver.ThreadingTCPServer):
                     print("\n".join(f"{i}. {client.client_address}" for i, client in enumerate(self.clients)))
                     print(f"There are currently {len(self.clients)} clients connected to this server:\n")
 
-                case "broadcast":
-                    for client in self.clients:
-                        packets.send_packet(client.request, packets.Message(message=" ".join(command_args)))
-                    print("Message broadcasted.")
+                # case "broadcast":
+                #     for client in self.clients:
+                #         packets.send_packet(client.request, packets.Message(command=" ".join(command_args)))
+                #     print("Message broadcasted.")
 
                 case "":
                     pass
