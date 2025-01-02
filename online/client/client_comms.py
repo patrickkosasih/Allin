@@ -11,10 +11,9 @@ from typing import Generator
 
 import pygame.event
 
-from app.tools.app_timer import Coroutine, ThreadWaiter
+from app.tools import app_async
 from online import packets
 from online.packets import send_packet, Packet, PacketTypes
-from online.server.server_main import ClientHandler
 
 HOST = "localhost"  # Temporary server address config
 PORT = 32727
@@ -103,15 +102,16 @@ class ClientComms:
         except (ConnectionResetError, TimeoutError) as e:
             ClientComms.disconnect()
 
-    # Async function (idfk what i'm doing)
     @staticmethod
-    def send_request(command: str) -> Generator[ThreadWaiter or float, str, str]:
+    def send_request(command: str) -> Generator[app_async.ThreadWaiter or float, str, str]:
         """
         Send a basic request packet to the server and wait for the response.
 
         :param command:
         :return:
         """
+        if not ClientComms.online:
+            return ""
 
         req_time = time.time_ns()
         ClientComms.request_queue.append(req_time)
@@ -121,7 +121,7 @@ class ClientComms:
             yield 0.001
 
         # Send request
-        send_task = ThreadWaiter(ClientComms.send_packet, (Packet(PacketTypes.BASIC_REQUEST, content=command),))
+        send_task = app_async.ThreadWaiter(ClientComms.send_packet, (Packet(PacketTypes.BASIC_REQUEST, content=command),))
         yield send_task
 
         # Wait for response

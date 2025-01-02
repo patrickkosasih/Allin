@@ -4,8 +4,7 @@ from app import app_settings
 from app.animations.fade import FadeColorAnimation
 from app.animations.interpolations import ease_out
 from app.scenes.scene import Scene
-from app.tools import app_timer
-from app.tools.app_timer import Coroutine
+from app.tools import app_timer, app_async
 from app.widgets.basic.button import Button
 from app.shared import *
 from app.widgets.menu.welcome_text import WelcomeText
@@ -13,7 +12,7 @@ from app.widgets.widget import Widget
 
 MAIN_MENU_BUTTON_COLOR = (24, 31, 37, 169)
 
-COPYRIGHT_TEXT = "Copyright (c) 2023-2024 Patrick Kosasih."
+COPYRIGHT_TEXT = "Copyright (c) 2023-2025 Patrick Kosasih."  # HAPPY NEW YEAR RAAAAHHHHHHH
 COPYRIGHT_TEXT_SUB = "All rights reserved."
 
 
@@ -99,7 +98,7 @@ class MainMenuScene(Scene):
 
             2, lambda: self.welcome_text.fade_anim(1.5, 0),
 
-            1, lambda: Coroutine(self.set_startup_shown(True, 0.5, 0.1)),
+            1, lambda: app_async.Coroutine(self.set_startup_shown(True, 0.5, 0.1)),
             lambda: self.logo.move_anim(0.5, (2, 2), interpolation=ease_out),
 
             1.5, lambda: self.welcome_text.delete("welcome_text"),

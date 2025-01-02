@@ -4,7 +4,7 @@ from threading import Thread
 
 from app.scenes.scene import Scene
 from app.shared import load_image
-from app.tools.app_timer import ThreadWaiter, Coroutine
+from app.tools import app_async
 from app.widgets.basic.button import CircularButton, Button
 from online.client.client_comms import ClientComms
 
@@ -27,12 +27,19 @@ class MultiplayerMenuScene(Scene):
                                   command=self.test_send_thing,
                                   text_str="oi oi oi")
 
+    @app_async.run_as_serial_coroutine
     def test_send_thing(self):
-        def req_task():
-            ret = yield from ClientComms.send_request("echo omaygyatt")
-            print(f"result of send request: {ret}")
+        print("wait 1 second")
+        yield 1
 
-        req_task = Coroutine(req_task())
+        print("wait 0.5 second")
+        yield 0.5
+
+        response = yield from ClientComms.send_request("echo omaygyatt")
+        print(f"result of send request: {response}")
+
+        response = yield from ClientComms.send_request("join oiia")
+        print(f"result of send request: {response}")
 
     def back(self):
         self.app.change_scene_anim("mainmenu")

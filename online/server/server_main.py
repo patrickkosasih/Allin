@@ -18,7 +18,7 @@ STARTUP_TEXT = "  ___  _ _ _              \n" \
                "| | | | | | | | | |       \n" \
                "\\_| |_/_|_|_|_| |_|    \n\n" \
                "Allin v0.5.0 Server       \n" \
-               "Copyright (c) Patrick Kosasih 2023-2024\n"
+               "Copyright (c) Patrick Kosasih 2023-2025\n"
 
 
 def log(message):
@@ -83,6 +83,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
             case "echo":
                 self.send_basic_response(req_args)
 
+            # WIP: The responses below are obviously still dummy responses.
             case "public":
                 self.send_basic_response("here are some public rooms bruv: <list of rooms>")
 
@@ -136,8 +137,8 @@ class AllinServer(socketserver.ThreadingTCPServer):
                     print(f"Current thread count: {threading.active_count()}")
 
                 case "list":
-                    print("\n".join(f"{i}. {client.client_address}" for i, client in enumerate(self.clients)))
                     print(f"There are currently {len(self.clients)} clients connected to this server:\n")
+                    print("\n".join(f"{i}. {client.client_address}" for i, client in enumerate(self.clients)))
 
                 # case "broadcast":
                 #     for client in self.clients:

@@ -12,7 +12,7 @@ from rules.singleplayer import InterfaceGame, SingleplayerGame
 
 from app.scenes.scene import Scene
 from app.shared import *
-from app.tools import app_timer
+from app.tools import app_timer, app_async
 
 from app import widgets, app_settings
 from app.widgets.game.card import Card
@@ -477,7 +477,7 @@ class GameScene(Scene):
         """
         Start revealing the hand rankings
         """
-        app_timer.Coroutine(self.reveal_rankings())
+        app_async.Coroutine(self.reveal_rankings())
 
     def reveal_rankings(self) -> Generator[float, None, None]:
         """
