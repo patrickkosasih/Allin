@@ -7,16 +7,19 @@ from app.shared import *
 
 class Coroutine(TimingUtility):
     """
-    The Coroutine class enables adding sleep delays in functions by having a generator function yield how many seconds
-    to wait for.
+    The Coroutine class enables pausing functions by having a generator function that yields a number or a ThreadWaiter
+    object.
+
+    For the generator function to pause, it must yield a number (int or float) that represents how many seconds the
+    function will wait. Another way is to yield a ThreadWaiter object, where the coroutine will wait until the task of
+    the ThreadWaiter is complete.
     """
 
     def __init__(self, target: Generator[int or float or "ThreadWaiter", Any, Any], group: None or "TimerGroup" = None):
         """
         Params:
 
-        :param target: A generator function that will be run by the coroutine. To pause the function, it must yield a
-                       number (int or float) that represents how many seconds the function will wait.
+        :param target: A generator function that will be run by the coroutine.
 
         :param group: Which timer group to put the coroutine in. If set to None then the timer would be automatically
                       placed in the global `default_group`, updated in the game's main loop.
@@ -50,7 +53,11 @@ class Coroutine(TimingUtility):
 
 
 class ThreadWaiter:
-    # TODO don't be skill issued haiya
+    """
+    The ThreadWaiter class is used to call a function from a coroutine and run it on a new thread. When the coroutine
+    yields the ThreadWaiter object, the coroutine waits until the thread is finished executing. The return value of the
+    threaded function can then be retreived from the `task_result` property.
+    """
     def __init__(self, task: Callable, args=(), auto_start=True):
         self._finished = False
 
@@ -95,7 +102,7 @@ def run_as_coroutine(func: Callable[Any, Generator]):
 
 def run_as_serial_coroutine(func: Callable[Any, Generator]):
     """
-    Similar to `run_as_coroutine` but the coroutine can only be run once at a time.
+    Similar to `run_as_coroutine` but there can only be a maximum of one coroutine running the function at the same time.
     """
     def limited_func(*args, **kwargs):
         if func_coroutine_running.setdefault(func, False):

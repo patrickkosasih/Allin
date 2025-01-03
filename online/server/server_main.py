@@ -2,10 +2,12 @@ import socket
 import socketserver
 import threading
 import datetime
+from multiprocessing.managers import Value
 from typing import Any
 
 from online import packets
 from online.packets import PacketTypes, Packet, send_packet
+from online.server.rooms import HandlerPlayer, ServerGameRoom
 
 # HOST = socket.gethostbyname(socket.gethostname())
 HOST = "localhost"
@@ -33,10 +35,18 @@ class ClientHandler(socketserver.BaseRequestHandler):
         super().__init__(request, client_address, server)
         self.server: AllinServer
 
+        self.name: str = ""
+        self.current_room: ServerGameRoom or None = None
+        self.current_player: HandlerPlayer or None = None
+
     def handle(self):
         threading.current_thread().name = f"Client {self.client_address[0]}:{self.client_address[1]}"
         self.server: AllinServer
         self.server.clients.append(self)
+
+        self.name = f"Port {self.client_address[1]}"  # TODO Make this customizable later.
+        self.current_room = None
+        self.current_player = None
 
         log("New connection established.")
 
@@ -54,6 +64,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
             # log(f"Client has disconnected with the exception {type(e).__name__}: {e}.")
 
         finally:
+            self.leave_room()
             self.server.clients.remove(self)
             log("Connection closed.")
 
@@ -65,10 +76,9 @@ class ClientHandler(socketserver.BaseRequestHandler):
             case PacketTypes.GAME_ACTION:
                 ...
 
-
     def handle_basic_request(self, packet: packets.Packet):
         if type(packet.content) is not str:
-            self.send_basic_response("error: contents of a basic request packet must be str")
+            self.send_basic_response("ERROR contents of a basic request packet must be str")
             return
 
         log(f"Received basic request: {packet.content}")
@@ -83,7 +93,6 @@ class ClientHandler(socketserver.BaseRequestHandler):
             case "echo":
                 self.send_basic_response(req_args)
 
-            # WIP: The responses below are obviously still dummy responses.
             case "public":
                 self.send_basic_response("here are some public rooms bruv: <list of rooms>")
 
@@ -91,16 +100,45 @@ class ClientHandler(socketserver.BaseRequestHandler):
                 self.send_basic_response(f"here is some info regarding the room with code {req_args}: <some room info>")
 
             case "join":
-                self.send_basic_response(f"you joined room {req_args}")
+                # self.send_basic_response(f"you joined room {req_args}")
+                try:
+                    self.join_room(req_args)
+                    self.send_basic_response("SUCCESS")
+
+                except (ValueError, KeyError) as e:
+                    log(f"Failed to join room: {e}")
+                    self.send_basic_response(f"ERROR failed to join room: {e}")
 
             case "leave":
-                self.send_basic_response("you left the room")
+                self.leave_room()
 
             case _:
-                self.send_basic_response("error: invalid request command")
+                self.send_basic_response("ERROR invalid request command")
 
     def send_basic_response(self, content: Any):
         send_packet(self.request, Packet(PacketTypes.BASIC_RESPONSE, content=content))
+
+    def join_room(self, room_code: str):
+        self.server: AllinServer
+
+        if len(room_code) != 4 and not room_code.isupper():
+            raise ValueError(f"invalid room code: {room_code}")
+        elif room_code not in self.server.rooms:
+            raise KeyError(f"room does not exist: {room_code}")
+        elif self.current_room:
+            raise ValueError("client is already in another room")
+
+        room = self.server.rooms[room_code]
+        player = room.join(self)
+
+        if player:
+            self.current_room = room
+            self.current_player = player
+            log(f"Player has joined room {room_code}.")
+
+    def leave_room(self):
+        self.current_player.leave_next_hand = True
+        log(f"Player has left the room.")
 
 
 class AllinServer(socketserver.ThreadingTCPServer):
@@ -109,6 +147,7 @@ class AllinServer(socketserver.ThreadingTCPServer):
         print(STARTUP_TEXT)
 
         self.clients: list[ClientHandler] = []
+        self.rooms: dict[str, ServerGameRoom] = {}
 
         threading.Thread(target=self.console, name="Server Console").start()
 
@@ -137,16 +176,30 @@ class AllinServer(socketserver.ThreadingTCPServer):
                     print(f"Current thread count: {threading.active_count()}")
 
                 case "list":
-                    print(f"There are currently {len(self.clients)} clients connected to this server:\n")
-                    print("\n".join(f"{i}. {client.client_address}" for i, client in enumerate(self.clients)))
+                    if not command_args:
+                        print("Invalid argument for the list command. Correct usage: \"list <clients|rooms>\"")
 
-                # case "broadcast":
-                #     for client in self.clients:
-                #         packets.send_packet(client.request, packets.Message(command=" ".join(command_args)))
-                #     print("Message broadcasted.")
+                    elif command_args[0] == "clients":
+                        print(f"There are currently {len(self.clients)} clients connected to this server:\n")
+                        print("\n".join(f"{i}. {client.client_address}" for i, client in enumerate(self.clients)))
+
+                    elif command_args[0] == "rooms":
+                        print(f"There are currently {len(self.rooms)} active rooms:\n")
+                        print("\n".join(f"{code}: {room}, Players: {room.players}"
+                                        for code, room in self.rooms.items()))
+
+                    else:
+                        print("Invalid argument for the list command. Correct usage: \"list <clients|rooms>\"")
+
+                case "create":
+                    # TODO Temporary testing stuff.
+                    self.rooms["AAAA"] = ServerGameRoom()
+                    self.rooms["AAAB"] = ServerGameRoom()
+                    print("Created rooms AAAA and AAAB")
 
                 case "":
                     pass
 
                 case _:
                     print("Invalid command.")
+

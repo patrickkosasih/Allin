@@ -70,6 +70,7 @@ class Player:
     def __init__(self, game: "PokerGame", name: str, chips: int):
         self.game = game
         self.player_hand = None
+        self.leave_next_hand = False
 
         self.name = name
         self.chips = chips
@@ -676,6 +677,14 @@ class PokerGame:
         self.ready_for_next_hand = True
 
         """
+        Mark bankrupt players as leaving next hand
+        """
+        for player in self.players:
+            if player.chips <= 0:
+                player.player_number = -2
+                player.leave_next_hand = True
+
+        """
         Cycle dealer
         """
         if cycle_dealer:
@@ -684,20 +693,16 @@ class PokerGame:
                 if self.players[self.dealer].chips > 0:
                     break
 
-            self.dealer -= sum(x.chips <= 0 for x in self.players[:self.dealer])
+            self.dealer -= sum(x.leave_next_hand for x in self.players[:self.dealer])
 
         """
-        Remove bankrupt players
+        Remove players who are leaving
         """
-        bankrupt = [player for player in self.players if player.chips <= 0]
-        self.players = [player for player in self.players if player.chips > 0]
+        self.players = [player for player in self.players if not player.leave_next_hand]
 
         """
         Update player numbers
         """
-        for x in bankrupt:
-            x.player_number = -2
-
         for i, player in enumerate(self.players):
             player.player_number = i
 

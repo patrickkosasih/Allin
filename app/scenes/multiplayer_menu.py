@@ -2,6 +2,7 @@ import random
 import time
 from threading import Thread
 
+from app.scenes.game_scene import GameScene
 from app.scenes.scene import Scene
 from app.shared import load_image
 from app.tools import app_async
@@ -9,6 +10,7 @@ from app.widgets.basic.button import CircularButton, Button
 from online.client.client_comms import ClientComms
 
 from online.packets import Packet
+from rules.multiplayer import MultiplayerGame
 
 
 class MultiplayerMenuScene(Scene):
@@ -25,21 +27,15 @@ class MultiplayerMenuScene(Scene):
 
         self.test_button = Button(self, 0, 0, 20, 20, "%", "ctr", "ctr",
                                   command=self.test_send_thing,
-                                  text_str="oi oi oi")
+                                  text_str="JOIN GAME RAHHHH")
 
     @app_async.run_as_serial_coroutine
     def test_send_thing(self):
-        print("wait 1 second")
-        yield 1
-
-        print("wait 0.5 second")
-        yield 0.5
-
-        response = yield from ClientComms.send_request("echo omaygyatt")
+        response = yield from ClientComms.send_request("join AAAA")
         print(f"result of send request: {response}")
 
-        response = yield from ClientComms.send_request("join oiia")
-        print(f"result of send request: {response}")
+        if response == "SUCCESS":
+            self.app.change_scene_anim(lambda: GameScene(self.app, MultiplayerGame()), duration=0.5)
 
     def back(self):
         self.app.change_scene_anim("mainmenu")
