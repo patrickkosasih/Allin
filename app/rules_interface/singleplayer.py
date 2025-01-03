@@ -1,12 +1,12 @@
 """
-rules/singleplayer.py
+app/rules_interface/singleplayer.py
 
 The singleplayer module is used to interface the game flow engine from the main app on singleplayer games.
 """
 
 from app.tools import app_timer
 from rules.game_flow import *
-from rules.interface import *
+from app.rules_interface.interface import *
 
 
 class Bot(Player):

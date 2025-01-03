@@ -1,5 +1,5 @@
 """
-interface.py
+app/rules_interface/interface.py
 
 The interface module is used to bridge the communication between the rules engine and the GUI (game scene).
 """

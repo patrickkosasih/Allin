@@ -1,7 +1,3 @@
-import random
-import time
-from threading import Thread
-
 from app.scenes.game_scene import GameScene
 from app.scenes.scene import Scene
 from app.shared import load_image
@@ -9,8 +5,7 @@ from app.tools import app_async
 from app.widgets.basic.button import CircularButton, Button
 from online.client.client_comms import ClientComms
 
-from online.packets import Packet
-from rules.multiplayer import MultiplayerGame
+from app.rules_interface.multiplayer import MultiplayerGame
 
 
 class MultiplayerMenuScene(Scene):

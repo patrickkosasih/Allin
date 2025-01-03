@@ -1,6 +1,13 @@
+"""
+app/rules_interface/multiplayer.py
+
+The multiplayer module is used to interface multiplayer games from the screen to the inputs to the client comms to the
+server.
+"""
+
 from online.client.client_comms import ClientComms
 from online.packets import Packet, PacketTypes
-from rules.interface import ClientPlayer, InterfaceGame
+from app.rules_interface.interface import InterfaceGame
 
 
 class MultiplayerGame(InterfaceGame):

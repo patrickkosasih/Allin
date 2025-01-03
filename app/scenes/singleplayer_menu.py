@@ -6,10 +6,8 @@ from app.scenes.scene import Scene
 from app.shared import FontSave, load_image
 from app.tools.settings_data import FieldType
 from app.widgets.basic.button import Button, CircularButton
-from app.widgets.basic.game_bg import GameBackground
-from app.widgets.basic.number_picker import NumberPicker
-from app.widgets.menu.setting_panel import SettingPanel, SettingEntry
-from rules.singleplayer import SingleplayerGame
+from app.widgets.menu.setting_panel import SettingPanel
+from app.rules_interface.singleplayer import SingleplayerGame
 
 
 class SingleplayerMenuScene(Scene):

@@ -1,8 +1,5 @@
 import random
 
-import pygame
-import pygame.gfxdraw
-
 from math import sin, cos, pi
 
 from app.shared import load_image
@@ -11,7 +8,6 @@ from typing import TYPE_CHECKING
 
 
 if TYPE_CHECKING:
-    from rules.interface import InterfaceGame
     from app.scenes.game_scene import GameScene
 
 

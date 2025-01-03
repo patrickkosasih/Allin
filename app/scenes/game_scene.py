@@ -1,4 +1,3 @@
-import pygame
 import random
 
 from app.animations.interpolations import ease_out, ease_in, linear
@@ -8,7 +7,7 @@ from app.widgets.menu.side_menu import SideMenu, SideMenuButton
 
 from rules.basic import HandRanking
 from rules.game_flow import GameEvent
-from rules.singleplayer import InterfaceGame, SingleplayerGame
+from app.rules_interface.singleplayer import InterfaceGame, SingleplayerGame
 
 from app.scenes.scene import Scene
 from app.shared import *
