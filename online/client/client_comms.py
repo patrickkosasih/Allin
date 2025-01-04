@@ -7,24 +7,30 @@ The client comms module is the bridge for the game client to the server.
 import socket
 import threading
 import time
-from typing import Generator
+from typing import Generator, Optional
 
-import pygame.event
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from app.app_main import App
+    from app.rules_interface.multiplayer import MultiplayerGame
+
+# import pygame.event
 
 from app.tools import app_async
-from online import packets
-from online.packets import send_packet, Packet, PacketTypes
+from online.data import packets
+from online.data.packets import Packet, PacketTypes
 
 HOST = "localhost"  # Temporary server address config
 PORT = 32727
 
 
-class OnlineEvents:
-    COMMS_STATUS = pygame.event.custom_type()
-
-    ROOM_STATUS = pygame.event.custom_type()
-    GAME_DATA = pygame.event.custom_type()
-    GAME_EVENT = pygame.event.custom_type()
+# class OnlineEvents:
+#     COMMS_STATUS = pygame.event.custom_type()
+#
+#     ROOM_STATUS = pygame.event.custom_type()
+#     GAME_DATA = pygame.event.custom_type()
+#     GAME_EVENT = pygame.event.custom_type()
 
 
 # Static class
@@ -36,6 +42,9 @@ class ClientComms:
 
     request_queue: list[int] = []
     last_response: str = ""
+
+    app: Optional["App"] = None
+    current_game: "MultiplayerGame" = None
 
     @staticmethod
     def connect(threaded=True):
@@ -53,6 +62,7 @@ class ClientComms:
             ClientComms.client_socket.connect((HOST, PORT))
 
             ClientComms.online = True
+            ClientComms.request_queue = []
             print(f"Connected to {HOST}")
             threading.Thread(target=ClientComms.receive, daemon=True).start()
 
@@ -66,6 +76,9 @@ class ClientComms:
     def disconnect():
         if ClientComms.client_socket:
             ClientComms.client_socket.shutdown(socket.SHUT_RDWR)
+
+        if ClientComms.current_game:
+            ClientComms.app.leave_game()
 
         ClientComms.client_socket = None
         ClientComms.online = False
@@ -85,8 +98,14 @@ class ClientComms:
                     case PacketTypes.BASIC_RESPONSE:
                         ClientComms.last_response = packet.content
 
-        except (ConnectionResetError, TimeoutError, OSError, EOFError):
-            pass
+                    case PacketTypes.GAME_EVENT:
+                        print("received game event oioioi", packet.content)
+
+                    case PacketTypes.GAME_DATA:
+                        print("received game data oioioi", packet.content)
+
+        except (ConnectionResetError, TimeoutError, OSError, EOFError) as e:
+            print(f"Disconnected from server: {e}")
 
         finally:
             ClientComms.disconnect()
@@ -100,6 +119,7 @@ class ClientComms:
             packets.send_packet(ClientComms.client_socket, packet)
 
         except (ConnectionResetError, TimeoutError) as e:
+            print(f"Failed to send packet: {e}")
             ClientComms.disconnect()
 
     @staticmethod
@@ -116,6 +136,11 @@ class ClientComms:
         req_time = time.time_ns()
         ClientComms.request_queue.append(req_time)
 
+        # FIXME when client gets disconnected from server because of the server shutting down,
+        #  it can't join again for some reason haiya
+        print("Request:", command)
+        print("Req queue:", ClientComms.request_queue)
+
         # Wait until it's the call's turn on the request queue.
         while ClientComms.request_queue[0] != req_time:
             yield 0.001
@@ -125,10 +150,20 @@ class ClientComms:
         yield send_task
 
         # Wait for response
+        wait_time = 0
+        check_delay = 0.01
+
         while not ClientComms.last_response:
-            yield 0.001
+            wait_time += check_delay
+            yield check_delay
+
+            if check_delay >= 5:
+                ClientComms.request_queue.pop(0)
+                ClientComms.last_response = ""
+                raise TimeoutError("server did not reply with a basic response")
 
         response = ClientComms.last_response
+        print("Response:", response)
 
         # Pop the queue and reset the last response
         ClientComms.request_queue.pop(0)

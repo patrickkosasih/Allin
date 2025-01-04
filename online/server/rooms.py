@@ -1,8 +1,9 @@
+from online.data.packets import send_packet, PacketTypes, Packet
 from rules.game_flow import Player, PokerGame, GameEvent
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
-    from server_main import ClientHandler, AllinServer
+    from server_main import ClientHandler
 
 
 class HandlerPlayer(Player):
@@ -11,8 +12,11 @@ class HandlerPlayer(Player):
         self.client = client
 
     def receive_event(self, game_event: GameEvent):
-        # Send the event to the client
-        ...
+        # TODO Also send the game data according to the type of the game event.
+        # send_packet(self.client.request, Packet(PacketTypes.GAME_DATA, game_event))
+
+        # Forward the game event to the client by sending a game event packet.
+        send_packet(self.client.request, Packet(PacketTypes.GAME_EVENT, game_event))
 
 
 class ServerGameRoom(PokerGame):
@@ -36,7 +40,10 @@ class ServerGameRoom(PokerGame):
         if self.game_in_progress:
             self.joining_queue.append(handler_player)
         else:
+            # TODO the program should do more stuff
             self.players.append(handler_player)
+            self.broadcast(GameEvent(GameEvent.RESET_PLAYERS))
+
 
         return handler_player
 

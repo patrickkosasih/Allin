@@ -6,17 +6,24 @@ server.
 """
 
 from online.client.client_comms import ClientComms
-from online.packets import Packet, PacketTypes
+from online.data.packets import Packet, PacketTypes
 from app.rules_interface.interface import InterfaceGame
+from rules.game_flow import GameEvent
 
 
 class MultiplayerGame(InterfaceGame):
     def __init__(self):
         super().__init__()
 
-    def action(self, action_type, new_amount=0):
-        ClientComms.send_packet(Packet(PacketTypes.GAME_ACTION, content=(action_type, new_amount)))
-
     def sync_game(self):
         # this will be our last jujutsu kaisen, sukuna
         ...
+
+    def on_event(self, event):
+        self.event_receiver(event)
+
+    def action(self, action_type, new_amount=0):
+        ClientComms.send_packet(Packet(PacketTypes.GAME_ACTION, content=(action_type, new_amount)))
+
+    def broadcast(self, broadcast: GameEvent) -> None:
+        pass

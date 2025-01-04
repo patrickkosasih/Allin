@@ -317,8 +317,34 @@ def server_request_test():
                 break
 
 
+def attributes_thingy():
+    def print_dict(d: dict):
+        for k, v in d.items():
+            print("{:30} {}".format(k, v))
+
+    game = PokerGame()
+    game.players = [Player(game, "aaa", 727), Player(game, "bbb", 69)]
+
+    hand = Hand(game)
+    player = Player(game, "aaa", 727)
+    player_hand = PlayerHand(hand, player)
+
+    print("\nPokerGame attributes:\n")
+    print_dict(vars(game))
+
+    print("\nHand attributes:\n")
+    print_dict(vars(hand))
+
+    print("\nPlayer attributes:\n")
+    print_dict(vars(player))
+
+    print("\nPlayerHand attributes:\n")
+    print_dict(vars(player_hand))
+
+
 if __name__ == "__main__":
     # standard_io_poker()
-    server_request_test()
+    # server_request_test()
+    attributes_thingy()
     # hand_ranking_test(repeat_until=HandRanking.ROYAL_FLUSH)
     # hand_ranking_test(n_tests=25)

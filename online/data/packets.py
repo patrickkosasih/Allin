@@ -27,6 +27,7 @@ def send_packet(s: socket.socket, packet: Packet) -> None:
     packet_raw = pickle.dumps(packet)
     packet_len_raw = struct.pack("i", len(packet_raw))
 
+    # print("Send packet", packet_raw)
     s.send(packet_len_raw)
     s.send(packet_raw)
 

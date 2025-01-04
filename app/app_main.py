@@ -10,8 +10,9 @@ from app.scenes.singleplayer_menu import SingleplayerMenuScene
 from app.scenes.scene import Scene
 from app.scenes.main_menu import MainMenuScene
 from app.shared import load_image, FontSave
-from app.tools import app_timer
+from app.tools import app_timer, app_async
 from app.widgets.listeners import MouseListener
+from online.client.client_comms import ClientComms
 
 
 class App:
@@ -24,6 +25,8 @@ class App:
 
         audio.SoundGroup.update_volume()
         audio.MusicPlayer.update_volume(autoplay=False)
+
+        ClientComms.app = self
 
         """
         Pygame and app attributes
@@ -123,7 +126,7 @@ class App:
     def quit(self):
         self.running = False
 
-    def change_scene(self, scene: Scene or str, cache_old_scene=True):
+    def change_scene(self, scene: Scene or str or Callable[[None], Scene], cache_old_scene=True):
         old_scene = self.scene
         self.reset_next_dt = True
 
@@ -177,6 +180,18 @@ class App:
             lambda: self.overlay_scene.fader.fade_anim(duration, 0),
             lambda: setattr(self, "changing_scene", False)
         ])
+
+    def leave_game(self):
+        if ClientComms.current_game:
+            # Multiplayer
+            ClientComms.current_game = None
+            app_async.Coroutine(ClientComms.send_request("leave"))
+
+        self.scene.app.change_scene_anim("mainmenu", cache_old_scene=False, duration=0.5)
+        self.scene.app.background_scene.background.fade_anim(0.25, 254)
+
+        audio.SoundGroup.stop_all_sounds()
+        app_timer.Timer(0.75, audio.MusicPlayer.play)
 
     def update_display_settings(self, force_update_window=False):
         prev_windowed = self.windowed

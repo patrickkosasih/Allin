@@ -2,11 +2,10 @@ import socket
 import socketserver
 import threading
 import datetime
-from multiprocessing.managers import Value
-from typing import Any
+from typing import Any, Optional
 
-from online import packets
-from online.packets import PacketTypes, Packet, send_packet
+from online.data import packets
+from online.data.packets import PacketTypes, Packet, send_packet
 from online.server.rooms import HandlerPlayer, ServerGameRoom
 
 # HOST = socket.gethostbyname(socket.gethostname())
@@ -36,8 +35,8 @@ class ClientHandler(socketserver.BaseRequestHandler):
         self.server: AllinServer
 
         self.name: str = ""
-        self.current_room: ServerGameRoom or None = None
-        self.current_player: HandlerPlayer or None = None
+        self.current_room: Optional[ServerGameRoom] = None
+        self.current_player: Optional[HandlerPlayer] = None
 
     def handle(self):
         threading.current_thread().name = f"Client {self.client_address[0]}:{self.client_address[1]}"
@@ -111,6 +110,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
 
             case "leave":
                 self.leave_room()
+                self.send_basic_response("SUCCESS")
 
             case _:
                 self.send_basic_response("ERROR invalid request command")
@@ -137,7 +137,17 @@ class ClientHandler(socketserver.BaseRequestHandler):
             log(f"Player has joined room {room_code}.")
 
     def leave_room(self):
-        self.current_player.leave_next_hand = True
+        if not self.current_room:
+            return
+
+        if self.current_room.game_in_progress:
+            self.current_player.leave_next_hand = True
+        else:
+            # TODO the program should do some other stuff
+            self.current_room.players.remove(self.current_player)
+            self.current_room = None
+            self.current_player = None
+
         log(f"Player has left the room.")
 
 
@@ -185,7 +195,8 @@ class AllinServer(socketserver.ThreadingTCPServer):
 
                     elif command_args[0] == "rooms":
                         print(f"There are currently {len(self.rooms)} active rooms:\n")
-                        print("\n".join(f"{code}: {room}, Players: {room.players}"
+                        print("\n".join(f"Room {code} | {len(room.players)} players: "
+                                        f"{', '.join(x.name for x in room.players)}"
                                         for code, room in self.rooms.items()))
 
                     else:
