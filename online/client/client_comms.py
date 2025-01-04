@@ -11,6 +11,9 @@ from typing import Generator, Optional
 
 from typing import TYPE_CHECKING
 
+from online.data.game_data import GameData
+from rules.game_flow import GameEvent
+
 if TYPE_CHECKING:
     from app.app_main import App
     from app.rules_interface.multiplayer import MultiplayerGame
@@ -33,6 +36,10 @@ PORT = 32727
 #     GAME_EVENT = pygame.event.custom_type()
 
 
+def log(*message):
+    print("[Comms Log]", *message)
+
+
 # Static class
 class ClientComms:
     client_socket: socket.socket = None
@@ -45,6 +52,7 @@ class ClientComms:
 
     app: Optional["App"] = None
     current_game: "MultiplayerGame" = None
+    game_event_queue: list[GameEvent or GameData] = []
 
     @staticmethod
     def connect(threaded=True):
@@ -54,7 +62,7 @@ class ClientComms:
             threading.Thread(target=ClientComms.connect, args=(False,), daemon=True).start()
             return
 
-        print("Connecting...")
+        log("Connecting...")
         ClientComms.connecting = True
 
         try:
@@ -63,11 +71,11 @@ class ClientComms:
 
             ClientComms.online = True
             ClientComms.request_queue = []
-            print(f"Connected to {HOST}")
+            log(f"Connected to {HOST}")
             threading.Thread(target=ClientComms.receive, daemon=True).start()
 
         except (socket.error, OSError) as e:
-            print(f"Failed to connect to {HOST}: {e}")
+            log(f"Failed to connect to {HOST}: {e}")
 
         finally:
             ClientComms.connecting = False
@@ -83,7 +91,7 @@ class ClientComms:
         ClientComms.client_socket = None
         ClientComms.online = False
 
-        print("Disconnected.")
+        log("Disconnected.")
 
     @staticmethod
     def receive():
@@ -98,14 +106,11 @@ class ClientComms:
                     case PacketTypes.BASIC_RESPONSE:
                         ClientComms.last_response = packet.content
 
-                    case PacketTypes.GAME_EVENT:
-                        print("received game event oioioi", packet.content)
-
-                    case PacketTypes.GAME_DATA:
-                        print("received game data oioioi", packet.content)
+                    case PacketTypes.GAME_EVENT | PacketTypes.GAME_DATA:
+                        ClientComms.game_event_queue.append(packet.content)
 
         except (ConnectionResetError, TimeoutError, OSError, EOFError) as e:
-            print(f"Disconnected from server: {e}")
+            log(f"Disconnected from server: {e}")
 
         finally:
             ClientComms.disconnect()
@@ -119,7 +124,7 @@ class ClientComms:
             packets.send_packet(ClientComms.client_socket, packet)
 
         except (ConnectionResetError, TimeoutError) as e:
-            print(f"Failed to send packet: {e}")
+            log(f"Failed to send packet: {e}")
             ClientComms.disconnect()
 
     @staticmethod
@@ -138,8 +143,8 @@ class ClientComms:
 
         # FIXME when client gets disconnected from server because of the server shutting down,
         #  it can't join again for some reason haiya
-        print("Request:", command)
-        print("Req queue:", ClientComms.request_queue)
+        log("Request:", command)
+        log("Req queue:", ClientComms.request_queue)
 
         # Wait until it's the call's turn on the request queue.
         while ClientComms.request_queue[0] != req_time:
@@ -163,10 +168,14 @@ class ClientComms:
                 raise TimeoutError("server did not reply with a basic response")
 
         response = ClientComms.last_response
-        print("Response:", response)
+        log("Response:", response)
 
         # Pop the queue and reset the last response
         ClientComms.request_queue.pop(0)
         ClientComms.last_response = ""
 
         return response
+
+    @staticmethod
+    def is_in_multiplayer() -> bool:
+        return ClientComms.current_game is not None

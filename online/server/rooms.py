@@ -1,4 +1,6 @@
+from online.data.game_data import GameData, generate_game_data
 from online.data.packets import send_packet, PacketTypes, Packet
+from rules.basic import generate_deck
 from rules.game_flow import Player, PokerGame, GameEvent
 
 from typing import TYPE_CHECKING
@@ -13,7 +15,9 @@ class HandlerPlayer(Player):
 
     def receive_event(self, game_event: GameEvent):
         # TODO Also send the game data according to the type of the game event.
-        # send_packet(self.client.request, Packet(PacketTypes.GAME_DATA, game_event))
+        if game_event.code in (GameEvent.RESET_PLAYERS, GameEvent.NEW_HAND, GameEvent.ROUND_FINISH, GameEvent.SHOWDOWN):
+            game_data = generate_game_data(self.game, game_event)
+            send_packet(self.client.request, Packet(PacketTypes.GAME_DATA, game_data))
 
         # Forward the game event to the client by sending a game event packet.
         send_packet(self.client.request, Packet(PacketTypes.GAME_EVENT, game_event))
@@ -35,6 +39,9 @@ class ServerGameRoom(PokerGame):
         """
         Create a new `HandlerPlayer` for the client handler and append it to the joining queue.
         """
+        if client.name in (x.name for x in self.players):
+            raise ValueError("name already taken")
+
         handler_player = HandlerPlayer(self, client, client.name, self.starting_chips)
 
         if self.game_in_progress:
@@ -44,11 +51,15 @@ class ServerGameRoom(PokerGame):
             self.players.append(handler_player)
             self.broadcast(GameEvent(GameEvent.RESET_PLAYERS))
 
-
         return handler_player
 
     def leave(self, client: "ClientHandler"):
-        ...
+        if self.game_in_progress:
+            client.current_player.leave_next_hand = True
+        else:
+            # TODO the program should do some other stuff
+            self.players.remove(client.current_player)
+            self.broadcast(GameEvent(GameEvent.RESET_PLAYERS))
 
     def prepare_next_hand(self, cycle_dealer=True):
         super().prepare_next_hand(cycle_dealer)

@@ -8,10 +8,14 @@ from online.data import packets
 from online.data.packets import PacketTypes, Packet, send_packet
 from online.server.rooms import HandlerPlayer, ServerGameRoom
 
+# Server address binding stuff
 # HOST = socket.gethostbyname(socket.gethostname())
 HOST = "localhost"
 PORT = 32727
 
+# Fancy stuffs
+POWER_SYMBOL = "⏻"
+CONNECT_SYMBOL = "ᯤ"
 STARTUP_TEXT = "  ___  _ _ _              \n" \
                " / _ \\| | (_)            \n" \
                "/ /_\\ \\ | |_ _ __       \n" \
@@ -22,11 +26,11 @@ STARTUP_TEXT = "  ___  _ _ _              \n" \
                "Copyright (c) Patrick Kosasih 2023-2025\n"
 
 
-def log(message):
+def log(*message, symbol="i"):
     print("{:15}".format(datetime.datetime.now().strftime("%H:%M:%S")), end="")
     print("{:35}".format(threading.current_thread().name), end="")
-
-    print(message)
+    print(f"[{symbol}] ", end="")
+    print(*message)
 
 
 class ClientHandler(socketserver.BaseRequestHandler):
@@ -47,7 +51,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
         self.current_room = None
         self.current_player = None
 
-        log("New connection established.")
+        log("New connection established.", symbol=CONNECT_SYMBOL)
 
         try:
             while True:
@@ -65,7 +69,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
         finally:
             self.leave_room()
             self.server.clients.remove(self)
-            log("Connection closed.")
+            log("Connection closed.", symbol=CONNECT_SYMBOL)
 
     def handle_packet(self, packet: packets.Packet):
         match packet.packet_type:
@@ -105,7 +109,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
                     self.send_basic_response("SUCCESS")
 
                 except (ValueError, KeyError) as e:
-                    log(f"Failed to join room: {e}")
+                    log(f"Failed to join room: {e}", symbol="X")
                     self.send_basic_response(f"ERROR failed to join room: {e}")
 
             case "leave":
@@ -134,21 +138,17 @@ class ClientHandler(socketserver.BaseRequestHandler):
         if player:
             self.current_room = room
             self.current_player = player
-            log(f"Player has joined room {room_code}.")
+            log(f"Player has joined room {room_code}, {len(room.players)} player(s) in room.")
 
     def leave_room(self):
         if not self.current_room:
             return
 
-        if self.current_room.game_in_progress:
-            self.current_player.leave_next_hand = True
-        else:
-            # TODO the program should do some other stuff
-            self.current_room.players.remove(self.current_player)
-            self.current_room = None
-            self.current_player = None
+        log(f"Player has left the room. {len(self.current_room.players) - 1} players remaining.")
 
-        log(f"Player has left the room.")
+        self.current_room.leave(self)
+        self.current_room = None
+        self.current_player = None
 
 
 class AllinServer(socketserver.ThreadingTCPServer):
@@ -162,8 +162,9 @@ class AllinServer(socketserver.ThreadingTCPServer):
         threading.Thread(target=self.console, name="Server Console").start()
 
         threading.current_thread().name = "Server Listener"
-        log(f"Server is now listening on port {PORT}.")
+        log(f"Server is now listening on port {PORT}.", symbol=POWER_SYMBOL)
         self.serve_forever()
+        log("Server has been shut down.", symbol=POWER_SYMBOL)
 
     def console(self):
         while True:
@@ -179,38 +180,42 @@ class AllinServer(socketserver.ThreadingTCPServer):
                     for client in self.clients:
                         client.request.shutdown(socket.SHUT_RDWR)
                     self.shutdown()
-                    log("Server has been shut down.")
                     break
 
                 case "count":
-                    print(f"Current thread count: {threading.active_count()}")
+                    log(f"Current thread count: {threading.active_count()}")
 
                 case "list":
+                    invalid_list_cmd = False
+
                     if not command_args:
-                        print("Invalid argument for the list command. Correct usage: \"list <clients|rooms>\"")
+                        invalid_list_cmd = True
 
                     elif command_args[0] == "clients":
-                        print(f"There are currently {len(self.clients)} clients connected to this server:\n")
+                        log(f"There are currently {len(self.clients)} clients connected to this server:\n")
                         print("\n".join(f"{i}. {client.client_address}" for i, client in enumerate(self.clients)))
 
                     elif command_args[0] == "rooms":
-                        print(f"There are currently {len(self.rooms)} active rooms:\n")
+                        log(f"There are currently {len(self.rooms)} active rooms:\n")
                         print("\n".join(f"Room {code} | {len(room.players)} players: "
                                         f"{', '.join(x.name for x in room.players)}"
                                         for code, room in self.rooms.items()))
 
                     else:
-                        print("Invalid argument for the list command. Correct usage: \"list <clients|rooms>\"")
+                        invalid_list_cmd = True
+
+                    if invalid_list_cmd:
+                        log("Invalid argument for the list command. Correct usage: \"list <clients|rooms>\"", symbol="X")
 
                 case "create":
                     # TODO Temporary testing stuff.
                     self.rooms["AAAA"] = ServerGameRoom()
                     self.rooms["AAAB"] = ServerGameRoom()
-                    print("Created rooms AAAA and AAAB")
+                    log("Created rooms AAAA and AAAB")
 
                 case "":
                     pass
 
                 case _:
-                    print("Invalid command.")
+                    log("Invalid command.", symbol="X")
 

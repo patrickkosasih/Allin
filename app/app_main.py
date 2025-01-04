@@ -182,7 +182,7 @@ class App:
         ])
 
     def leave_game(self):
-        if ClientComms.current_game:
+        if ClientComms.is_in_multiplayer():
             # Multiplayer
             ClientComms.current_game = None
             app_async.Coroutine(ClientComms.send_request("leave"))
@@ -218,3 +218,4 @@ class App:
             self.background_scene = BackgroundScene(self)
 
         return update_window
+
