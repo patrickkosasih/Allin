@@ -33,7 +33,7 @@ class GameScene(Scene):
     def __init__(self, app, game: InterfaceGame):
         super().__init__(app, "")
 
-        self.game = game
+        self.game: InterfaceGame = game
         self.game.event_receiver = self.receive_event
 
         """
@@ -648,7 +648,7 @@ class GameScene(Scene):
     def update(self, dt):
         super().update(dt)
 
-        self.game.timer_group.update(dt)
+        self.game.update(dt)
 
         if self.flash_fac > 0:
             self.app.display_surface.fill(3 * (self.flash_fac,), special_flags=pygame.BLEND_RGB_ADD)
