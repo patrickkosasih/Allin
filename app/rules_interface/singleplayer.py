@@ -60,7 +60,7 @@ class SingleplayerGame(InterfaceGame):
     def __init__(self, n_bots: int, starting_chips: int, sb_amount: int):
         super().__init__()
 
-        self.client_player = ClientPlayer(self, "YOU", starting_chips)
+        self.client_player = Player(self, "YOU", starting_chips)
         self.bots = [Bot(self, f"Bot {i + 1}", starting_chips) for i in range(n_bots)]
         self.players: list[Player] = [self.client_player] + self.bots
 

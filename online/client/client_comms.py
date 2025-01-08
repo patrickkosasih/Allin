@@ -106,7 +106,12 @@ class ClientComms:
                     case PacketTypes.BASIC_RESPONSE:
                         ClientComms.last_response = packet.content
 
-                    case PacketTypes.GAME_EVENT | PacketTypes.GAME_DATA:
+                    case PacketTypes.GAME_EVENT:
+                        log("Received game event packet:", packet.content)
+                        ClientComms.game_event_queue.append(packet.content)
+
+                    case PacketTypes.GAME_DATA:
+                        log("Received game data packet:", packet.content)
                         ClientComms.game_event_queue.append(packet.content)
 
         except (ConnectionResetError, TimeoutError, OSError, EOFError) as e:
@@ -141,10 +146,8 @@ class ClientComms:
         req_time = time.time_ns()
         ClientComms.request_queue.append(req_time)
 
-        # FIXME when client gets disconnected from server because of the server shutting down,
-        #  it can't join again for some reason haiya
-        log("Request:", command)
-        log("Req queue:", ClientComms.request_queue)
+        # FIXME when client gets disconnected from server because of the server shutting down, it can't join again for
+        #  some reason haiya, idk the `run_as_serial_coroutine` decorator thingy may be the culprit though
 
         # Wait until it's the call's turn on the request queue.
         while ClientComms.request_queue[0] != req_time:
@@ -168,7 +171,7 @@ class ClientComms:
                 raise TimeoutError("server did not reply with a basic response")
 
         response = ClientComms.last_response
-        log("Response:", response)
+        log(f"Request: {command} -> Response: {response}")
 
         # Pop the queue and reset the last response
         ClientComms.request_queue.pop(0)

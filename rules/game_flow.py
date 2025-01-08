@@ -202,7 +202,7 @@ class Hand:
         self.blinds: tuple[int, int] = (self.current_turn, self.get_next_turn(1))
 
         self.round_finished: bool = False
-        self.deal_started: bool = False
+        self.hand_started: bool = False
         self.skip_next_rounds: bool = False
 
         """
@@ -221,7 +221,7 @@ class Hand:
         Start the current hand. Should only be called ONCE on the start of a hand.
         """
 
-        self.deal_started = True
+        self.hand_started = True
 
         """
         Player turn initialization and blinds
@@ -257,7 +257,7 @@ class Hand:
             return ActionResult.ROUND_ALREADY_ENDED
         elif self.winners:
             return ActionResult.HAND_ALREADY_ENDED
-        elif not self.deal_started:
+        elif not self.hand_started:
             return ActionResult.HAND_NOT_STARTED_YET
 
         player: PlayerHand = self.get_current_player()
@@ -645,7 +645,7 @@ class PokerGame:
         self.hand: Hand or None = None
 
     def start_game(self):
-        self.prepare_next_hand(cycle_dealer=True)
+        self.prepare_next_hand(cycle_dealer=False)
         self.new_hand()
 
     def new_hand(self):

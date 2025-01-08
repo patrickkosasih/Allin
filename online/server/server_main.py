@@ -138,13 +138,13 @@ class ClientHandler(socketserver.BaseRequestHandler):
         if player:
             self.current_room = room
             self.current_player = player
-            log(f"Player has joined room {room_code}, {len(room.players)} player(s) in room.")
+            log(f"Player has joined room {room_code}. {len(room.players)} player(s) in room.")
 
     def leave_room(self):
         if not self.current_room:
             return
 
-        log(f"Player has left the room. {len(self.current_room.players) - 1} players remaining.")
+        log(f"Player has left the room. {len(self.current_room.players) - 1} player(s) remaining.")
 
         self.current_room.leave(self)
         self.current_room = None
@@ -211,7 +211,11 @@ class AllinServer(socketserver.ThreadingTCPServer):
                     # TODO Temporary testing stuff.
                     self.rooms["AAAA"] = ServerGameRoom()
                     self.rooms["AAAB"] = ServerGameRoom()
-                    log("Created rooms AAAA and AAAB")
+                    log("Created rooms AAAA and AAAB.")
+
+                case "start":
+                    self.rooms["AAAA"].start_game()
+                    log("Game started on room AAAA.")
 
                 case "":
                     pass

@@ -1,4 +1,4 @@
-from online.data.game_data import GameData, generate_game_data
+from online.data.game_data import GameData, dump_game_sync_data, GAME_SYNC_ATTRS
 from online.data.packets import send_packet, PacketTypes, Packet
 from rules.basic import generate_deck
 from rules.game_flow import Player, PokerGame, GameEvent
@@ -14,9 +14,11 @@ class HandlerPlayer(Player):
         self.client = client
 
     def receive_event(self, game_event: GameEvent):
-        # TODO Also send the game data according to the type of the game event.
-        if game_event.code in (GameEvent.RESET_PLAYERS, GameEvent.NEW_HAND, GameEvent.ROUND_FINISH, GameEvent.SHOWDOWN):
-            game_data = generate_game_data(self.game, game_event)
+        # For some types of game events, send a game data packet.
+        if game_event.code in GAME_SYNC_ATTRS:
+            game_data = dump_game_sync_data(self.game, game_event.code)
+            game_data.client_player_number = self.player_number
+
             send_packet(self.client.request, Packet(PacketTypes.GAME_DATA, game_data))
 
         # Forward the game event to the client by sending a game event packet.
@@ -49,16 +51,21 @@ class ServerGameRoom(PokerGame):
         else:
             # TODO the program should do more stuff
             self.players.append(handler_player)
+            self.players[-1].player_number = len(self.players) - 1
+
             self.broadcast(GameEvent(GameEvent.RESET_PLAYERS))
 
         return handler_player
 
     def leave(self, client: "ClientHandler"):
         if self.game_in_progress:
+            # TODO the program should do some other stuff
             client.current_player.leave_next_hand = True
         else:
-            # TODO the program should do some other stuff
             self.players.remove(client.current_player)
+            for i, player in enumerate(self.players):
+                player.player_number = i
+
             self.broadcast(GameEvent(GameEvent.RESET_PLAYERS))
 
     def prepare_next_hand(self, cycle_dealer=True):

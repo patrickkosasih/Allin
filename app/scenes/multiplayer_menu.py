@@ -28,7 +28,6 @@ class MultiplayerMenuScene(Scene):
     @app_async.run_as_serial_coroutine
     def join(self, room_code):
         response = yield from ClientComms.send_request(f"join {room_code}")
-        # print(f"result of send request: {response}")
 
         if response == "SUCCESS":
             game = MultiplayerGame()

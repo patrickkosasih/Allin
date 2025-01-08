@@ -7,7 +7,7 @@ server.
 from multiprocessing.connection import Client
 
 from online.client.client_comms import ClientComms
-from online.data.game_data import GameData
+from online.data.game_data import GameData, load_attrs
 from online.data.packets import Packet, PacketTypes
 from app.rules_interface.interface import InterfaceGame
 from rules.game_flow import GameEvent, Player
@@ -16,27 +16,44 @@ from rules.game_flow import GameEvent, Player
 class MultiplayerGame(InterfaceGame):
     def __init__(self):
         super().__init__()
-        self.client_player = Player(self, "YOU", 1000)  # TODO change later
+        self.client_player = Player(self, "Placeholder thingy", 1000)  # TODO change later
 
     def sync_game(self, game_data: GameData):
-        # this will be our last jujutsu kaisen, sukuna
-        if game_data.players:
+        """
+        this will be our last jujutsu kaisen, sukuna
+        """
+        load_attrs(self, game_data.attr_dict, ["players", "hand"])
+
+        if "players" in game_data.attr_dict:
             old_players_dict = {x.name: x for x in self.players}
             new_players_list = []
 
-            for player_attr in game_data.players:
-                if player_attr.name in old_players_dict:
+            for player_attr_dict in game_data.attr_dict["players"]:
+                if player_attr_dict["name"] in old_players_dict:
                     # Existing player
-                    player = old_players_dict[player_attr.name]
-                    player.chips = player_attr.chips
+                    player = old_players_dict[player_attr_dict["name"]]
+                    player.chips = player_attr_dict["chips"]
                     new_players_list.append(player)
 
                 else:
                     # New player
-                    player = Player(self, player_attr.name, player_attr.chips)
+                    player = Player(self, player_attr_dict["name"], player_attr_dict["chips"])
                     new_players_list.append(player)
 
             self.players = new_players_list
+
+            for i, player in enumerate(self.players):
+                player.player_number = i
+
+        if "hand" in game_data.attr_dict:
+            if not self.game_in_progress:
+                self.start_game()
+
+            load_attrs(self.hand, game_data.attr_dict["hand"], ["players"])
+
+        if game_data.client_player_number != -1:
+            self.client_player = self.players[game_data.client_player_number]
+
 
     def on_event(self, event):
         self.event_receiver(event)
