@@ -256,9 +256,9 @@ class GameScene(Scene):
 
         rects = [(-m, (-m - i * (h + m)), w, h, "%", "br", "br") for i in range(3)]  # List of all the button rects
 
-        self.fold_button = FoldButton(self, *rects[0], player=self.game.client_player)
-        self.call_button = CallButton(self, *rects[1], player=self.game.client_player)
-        self.raise_button = RaiseButton(self, *rects[2], player=self.game.client_player)
+        self.fold_button = FoldButton(self, *rects[0])
+        self.call_button = CallButton(self, *rects[1])
+        self.raise_button = RaiseButton(self, *rects[2])
 
         for x in (self.fold_button, self.call_button, self.raise_button):
             self.action_buttons.add(x)
@@ -269,8 +269,7 @@ class GameScene(Scene):
         """
         bp_dimensions = 30, 2 * h + m  # Width and height of bet prompt (in %screen)
 
-        self.bet_prompt = BetPrompt(self, -m, -m, *bp_dimensions, "%", "br", "br",
-                                    game_scene=self, player=self.game.client_player)
+        self.bet_prompt = BetPrompt(self, -m, -m, *bp_dimensions, "%", "br", "br")
         self.bet_prompt.set_shown(False, 0.0)
 
     def show_action_buttons(self, shown: bool):

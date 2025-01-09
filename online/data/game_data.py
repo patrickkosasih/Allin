@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 from typing import Any, Iterable
 
-from rules.game_flow import PokerGame, GameEvent, Player, PlayerHand
+from rules.basic import Card
+from rules.game_flow import PokerGame, GameEvent
 
 
 """
@@ -9,7 +10,7 @@ Attributes to be synced
 """
 
 GAME_SYNC_ATTRS = {
-    GameEvent.NEW_HAND: ["players", "dealer", "sb_amount", "game_in_progress", "hand"],
+    GameEvent.NEW_HAND: ["players", "dealer", "sb_amount", "game_in_progress"],
     GameEvent.NEW_ROUND: ["players", "hand"],
     GameEvent.SKIP_ROUND: ["players", "hand"],
     GameEvent.SHOWDOWN: ["players", "hand"],
@@ -33,7 +34,7 @@ class GameData:
 
     # Extra stuff (non-PokerGame attributes)
     client_player_number: int = -1
-    client_player_hand: PlayerHand = None
+    client_pocket_cards: list[Card] = None
 
 
 def dump_select_attrs(o: object, attr_list: list[str], exclude: Iterable[str] = ()) -> dict[str, Any]:

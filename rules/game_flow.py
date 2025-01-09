@@ -5,6 +5,7 @@ The module that controls the flow of a poker game. This module contains classes 
 poker game, so that every player action follows the rules of Texas Hold'em poker.
 """
 from dataclasses import dataclass
+from typing import Optional
 
 from rules.basic import *
 
@@ -68,13 +69,13 @@ class Player:
     """
 
     def __init__(self, game: "PokerGame", name: str, chips: int):
-        self.game = game
-        self.player_hand = None
-        self.leave_next_hand = False
+        self.game: "PokerGame" = game
+        self.player_hand: Optional["PlayerHand"] = None
+        self.leave_next_hand: bool = False
 
-        self.name = name
-        self.chips = chips
-        self.player_number = -2  # -2: Not assigned to any PokerGame
+        self.name: str = name
+        self.chips: int = chips
+        self.player_number: int = -2  # -2: Not assigned to any PokerGame
 
     def action(self, action_type: int, new_amount=0) -> GameEvent or None:
         """
@@ -189,6 +190,7 @@ class Hand:
         self.winners: list[list] = []
         # A list of sublists of `PlayerHand` objects who has won the hand. Each sublist contains the winner(s) of their
         # respective pot. When there are no side pots, there is only one sublist.
+        # TODO change to list[list[int]] instead of list[list[PlayerHand]].
 
         self.pots: list[int] = [0]
         self.current_round_bets: int = 0
@@ -205,8 +207,11 @@ class Hand:
         self.hand_started: bool = False
         self.skip_next_rounds: bool = False
 
+        self.deal_cards()
+
+    def deal_cards(self):
         """
-        Deal cards to players
+        Deal two pocket cards to each player.
         """
         n_dealed_cards = len(self.players) * 2
 
@@ -368,6 +373,7 @@ class Hand:
             return
 
         assert sum(x.current_round_spent for x in self.players) == self.current_round_bets, "bet amount sums must match"
+
         prev_total_pot = sum(self.pots)
         prev_round_bets = self.current_round_bets
 

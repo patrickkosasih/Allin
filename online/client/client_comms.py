@@ -52,7 +52,8 @@ class ClientComms:
 
     app: Optional["App"] = None
     current_game: "MultiplayerGame" = None
-    game_event_queue: list[GameEvent or GameData] = []
+    game_event_queue: list[GameEvent] = []
+    game_data_queue: list[GameData] = []
 
     @staticmethod
     def connect(threaded=True):
@@ -112,7 +113,7 @@ class ClientComms:
 
                     case PacketTypes.GAME_DATA:
                         log("Received game data packet:", packet.content)
-                        ClientComms.game_event_queue.append(packet.content)
+                        ClientComms.game_data_queue.append(packet.content)
 
         except (ConnectionResetError, TimeoutError, OSError, EOFError) as e:
             log(f"Disconnected from server: {e}")

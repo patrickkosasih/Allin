@@ -77,7 +77,8 @@ class ClientHandler(socketserver.BaseRequestHandler):
                 self.handle_basic_request(packet)
 
             case PacketTypes.GAME_ACTION:
-                ...
+                if self.current_player:
+                    self.current_player.action(*packet.content)
 
     def handle_basic_request(self, packet: packets.Packet):
         if type(packet.content) is not str:

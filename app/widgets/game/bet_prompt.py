@@ -1,3 +1,4 @@
+
 import pygame.sprite
 
 from app.animations.interpolations import ease_in, ease_out
@@ -9,15 +10,18 @@ from app.shared import *
 from app.widgets.listeners import KeyboardListener
 from app.widgets.widget import Widget
 
+from typing import TYPE_CHECKING
+if TYPE_CHECKING:
+    from app.scenes.game_scene import GameScene
+
 from rules.game_flow import Actions
 
 
 class BetPrompt(Widget):
-    def __init__(self, parent, *rect_args, game_scene, player):
+    def __init__(self, parent: "GameScene", *rect_args):
         super().__init__(parent, *rect_args)
 
-        self.game_scene = game_scene
-        self.player = player
+        self.game_scene = self.parent
 
         """
         Data fields
@@ -82,6 +86,10 @@ class BetPrompt(Widget):
     def update(self, dt):
         super().update(dt)
 
+    @property
+    def player(self):
+        return self.game_scene.game.client_player
+
 
 class BetSlider(Slider):
     def __init__(self, prompt, *rect, **kwargs):
@@ -119,7 +127,7 @@ class BetConfirmButton(KeyboardListener, SideTextedButton):
         self.blink = False
 
     def command(self):
-        bet_result = self.prompt.player.action(Actions.BET, self.prompt.bet_amount)
+        bet_result = self.prompt.game_scene.game.action(Actions.BET, self.prompt.bet_amount)
         if bet_result == 0:
             self.prompt.set_shown(False)
 

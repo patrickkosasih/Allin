@@ -23,13 +23,13 @@ class ActionButton(Button, ABC):
     `ActionButton` is the parent abstract class for all the action buttons.
     """
 
-    def __init__(self, parent, *rect_args, player: Player, **kwargs):
+    def __init__(self, parent: "GameScene", *rect_args, **kwargs):
         super().__init__(parent, *rect_args, command=self.command, **kwargs)
+
+        self.game_scene = self.parent
 
         self.original_pos = Vector2(self.rect.center)
         self.hidden_pos = self.original_pos + Vector2(1.2 * self.rect.width, 0)
-
-        self.player = player
 
     def set_shown(self, shown: bool, duration=0.5):
         new_pos = self.original_pos if shown else self.hidden_pos
@@ -42,6 +42,11 @@ class ActionButton(Button, ABC):
     @abstractmethod
     def command(self):
         pass
+
+    @property
+    def player(self):
+        self.parent: "GameScene"
+        return self.parent.game.client_player
 
 
 class SideTextedButton(Button):
@@ -90,23 +95,23 @@ class SideTextedButton(Button):
 
 
 class FoldButton(ActionButton):
-    def __init__(self, parent, *rect_args, player: Player):
-        super().__init__(parent, *rect_args, player=player, color=COLORS["fold"], text_str="Fold",
+    def __init__(self, parent, *rect_args):
+        super().__init__(parent, *rect_args, color=COLORS["fold"], text_str="Fold",
                          icon=load_image("assets/sprites/action icons/fold.png"), icon_size=0.8)
 
     def command(self):
-        self.player.action(Actions.FOLD)
+        self.game_scene.game.action(Actions.FOLD)
 
     def update_bet_amount(self, new_bet_amount: int):
         pass
 
 
 class CallButton(ActionButton, SideTextedButton):
-    def __init__(self, parent, *rect_args, player: Player):
-        super().__init__(parent, *rect_args, player=player, color=COLORS["call"], text_str="Call")
+    def __init__(self, parent, *rect_args):
+        super().__init__(parent, *rect_args, color=COLORS["call"], text_str="Call")
 
     def command(self):
-        self.player.action(Actions.CALL)
+        self.game_scene.game.action(Actions.CALL)
 
     def update_bet_amount(self, new_bet_amount: int):
         amount_to_pay = new_bet_amount - self.player.player_hand.current_round_spent
@@ -128,10 +133,8 @@ class RaiseButton(ActionButton):
     The bet/raise button toggles the bet prompt to be shown or hidden.
     """
 
-    def __init__(self, game_scene: "GameScene", *rect_args, player: Player):
-        super().__init__(game_scene, *rect_args,
-                         player=player, color=COLORS["raise"], text_str="Raise")
-        self.game_scene = game_scene
+    def __init__(self, parent: "GameScene", *rect_args):
+        super().__init__(parent, *rect_args, color=COLORS["raise"], text_str="Raise")
 
         # Fields for toggling between show/hide bet prompt
         self.original_icon = None

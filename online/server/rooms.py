@@ -1,6 +1,7 @@
+import threading
+
 from online.data.game_data import GameData, dump_game_sync_data, GAME_SYNC_ATTRS
 from online.data.packets import send_packet, PacketTypes, Packet
-from rules.basic import generate_deck
 from rules.game_flow import Player, PokerGame, GameEvent
 
 from typing import TYPE_CHECKING
@@ -16,9 +17,13 @@ class HandlerPlayer(Player):
     def receive_event(self, game_event: GameEvent):
         # For some types of game events, send a game data packet.
         if game_event.code in GAME_SYNC_ATTRS:
-            game_data = dump_game_sync_data(self.game, game_event.code)
+            game_data: GameData = dump_game_sync_data(self.game, game_event.code)
             game_data.client_player_number = self.player_number
 
+            if game_event.code == GameEvent.NEW_HAND:
+                game_data.client_pocket_cards = self.player_hand.pocket_cards
+
+            print(game_data)
             send_packet(self.client.request, Packet(PacketTypes.GAME_DATA, game_data))
 
         # Forward the game event to the client by sending a game event packet.
@@ -67,6 +72,43 @@ class ServerGameRoom(PokerGame):
                 player.player_number = i
 
             self.broadcast(GameEvent(GameEvent.RESET_PLAYERS))
+
+    def time_next_event(self, event):
+        match event.code:
+            case GameEvent.RESET_PLAYERS:
+                pass
+
+            case GameEvent.NEW_HAND:
+                threading.Timer(2, self.hand.start_hand).start()
+
+            case GameEvent.ROUND_FINISH:
+                threading.Timer(1, self.hand.next_round).start()
+
+            case GameEvent.NEW_ROUND:
+                threading.Timer(2.25 + len(self.hand.community_cards) / 8, self.hand.start_new_round).start()
+
+            case GameEvent.SKIP_ROUND:
+                threading.Timer(2.25 + len(self.hand.community_cards) / 8, self.hand.next_round).start()
+
+            case GameEvent.SHOWDOWN:
+                threading.Timer(10, self.broadcast, (GameEvent(GameEvent.RESET_HAND),)).start()
+
+            case GameEvent.RESET_HAND:
+                reset_players = any(x.chips <= 0 or x.leave_next_hand for x in self.players)
+                self.prepare_next_hand()
+
+                if reset_players:
+                    threading.Timer(2.5, self.broadcast, (GameEvent(GameEvent.RESET_PLAYERS),)).start()
+                    threading.Timer(4.5, self.new_hand).start()
+
+                else:
+                    threading.Timer(3, self.new_hand).start()
+
+    """
+    Overridden methods
+    """
+    def on_event(self, event):
+        self.time_next_event(event)
 
     def prepare_next_hand(self, cycle_dealer=True):
         super().prepare_next_hand(cycle_dealer)

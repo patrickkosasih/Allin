@@ -3,14 +3,60 @@ app/rules_interface/multiplayer.py
 
 The multiplayer module is used to interface multiplayer games from the screen to the inputs to the client comms to the
 server.
-"""
-from multiprocessing.connection import Client
 
+A key concept of the multiplayer module is that the rule engine subclasses of this module would have most their original
+functionality of their parent classes disabled, because most of the calculations are done on the server side, and the
+job of these classes is only to interface the server-side game to the player's screen.
+"""
 from online.client.client_comms import ClientComms
-from online.data.game_data import GameData, load_attrs
+from online.data.game_data import GameData, load_attrs, GAME_SYNC_ATTRS
 from online.data.packets import Packet, PacketTypes
 from app.rules_interface.interface import InterfaceGame
-from rules.game_flow import GameEvent, Player
+from rules.basic import HandRanking
+from rules.game_flow import GameEvent, Player, Hand, Actions
+
+
+class MultiplayerHand(Hand):
+    def __init__(self, game: "MultiplayerGame"):
+        super().__init__(game)
+        self.game: MultiplayerGame
+        self.deck = []
+
+        self.client_player_hand = self.game.client_player.player_hand
+
+    def deal_cards(self):
+        """
+        Run on a NEW_HAND event.
+
+        In multiplayer games, the deck and other players' pocket cards are kept secret on the server side.
+        """
+        pass
+
+    def start_hand(self):
+        self.hand_started = True
+
+    def next_round(self):
+        """
+        Run on a NEXT_ROUND event.
+        """
+
+        """
+        Reset fields
+        """
+        self.amount_to_call = 0
+        self.current_round_bets = 0
+        self.current_turn = self.get_next_turn(1, turn=self.game.dealer)
+        self.round_finished = False
+
+        """
+        Reset player hands
+        """
+        self.client_player_hand.hand_ranking = HandRanking(self.community_cards + self.client_player_hand.pocket_cards)
+
+        for player in self.players:
+            player.current_round_spent = 0
+            player.last_action = "folded" if player.folded else ("all in" if player.all_in else "")
+            player.called = False
 
 
 class MultiplayerGame(InterfaceGame):
@@ -46,17 +92,68 @@ class MultiplayerGame(InterfaceGame):
                 player.player_number = i
 
         if "hand" in game_data.attr_dict:
-            if not self.game_in_progress:
-                self.start_game()
-
             load_attrs(self.hand, game_data.attr_dict["hand"], ["players"])
 
         if game_data.client_player_number != -1:
             self.client_player = self.players[game_data.client_player_number]
 
+        if game_data.client_pocket_cards and self.hand:
+            self.client_player.player_hand.pocket_cards = game_data.client_pocket_cards
 
-    def on_event(self, event):
-        self.event_receiver(event)
+    """
+    Overridden input and output methods
+    """
+    def on_event(self, game_event: GameEvent, game_data: GameData or None = None):
+        """
+
+        :param game_event:
+        :param game_data:
+        """
+        if game_event.code in GAME_SYNC_ATTRS and not game_data:
+            raise ValueError(f"game event of type {game_event.code} must be provided with a game data")
+
+        """
+        Update the game based on only the game event.
+        """
+        if game_event.prev_player != -1 and game_event.message:
+            action_message = game_event.message.upper()
+
+            if action_message in Actions.__dict__:
+                action_code = Actions.__dict__[action_message]
+            elif action_message == "ALL IN":
+                action_code = Actions.RAISE
+            else:
+                raise ValueError(f"invalid action message: {action_message}")
+
+            self.players[game_event.prev_player].action(action_code, game_event.bet_amount)
+
+        if game_event.next_player != -1:
+            self.hand.current_turn = game_event.next_player
+
+        """
+        Handle type-specific events.
+        """
+        if game_event.code == GameEvent.START_HAND:
+            self.hand.start_hand()
+
+        elif game_event.code == GameEvent.NEW_HAND:
+            if self.game_in_progress:
+                self.new_hand()
+            else:
+                self.start_game()
+            self.sync_game(game_data)
+
+        elif game_event.code == GameEvent.NEW_ROUND:
+            self.sync_game(game_data)
+            self.hand.next_round()
+
+        elif game_data:
+            self.sync_game(game_data)
+
+        """
+        Forward the event to the game scene's event receiver
+        """
+        self.event_receiver(game_event)
 
     def action(self, action_type, new_amount=0):
         ClientComms.send_packet(Packet(PacketTypes.GAME_ACTION, content=(action_type, new_amount)))
@@ -67,13 +164,20 @@ class MultiplayerGame(InterfaceGame):
         """
         pass
 
+    """
+    Overridden general game methods
+    """
+    def new_hand(self):
+        self.hand = MultiplayerHand(self)
+
     def update(self, dt):
         super().update(dt)
 
-        if ClientComms.game_event_queue:
-            event: GameEvent or GameData = ClientComms.game_event_queue.pop(0)
+        if ClientComms.game_event_queue and (ClientComms.game_data_queue or
+                                             ClientComms.game_event_queue[0].code not in GAME_SYNC_ATTRS):
 
-            if type(event) is GameEvent:
-                self.on_event(event)
-            elif type(event) is GameData:
-                self.sync_game(event)
+            game_event: GameEvent = ClientComms.game_event_queue.pop(0)
+            game_data: GameData or None = ClientComms.game_data_queue.pop(0) \
+                                          if game_event.code in GAME_SYNC_ATTRS else None
+
+            self.on_event(game_event, game_data)
