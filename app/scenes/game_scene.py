@@ -338,10 +338,12 @@ class GameScene(Scene):
 
         if showdown:
             # Showdown: Highlight the winning hand(s)
-            ranked_cards = set(x for winner in self.game.hand.winners[0] for x in winner.hand_ranking.ranked_cards)
+            ranked_cards = set(card for winner_index in self.game.hand.winners[0]
+                                    for card in self.game.hand.players[winner_index].hand_ranking.ranked_cards)
 
             if app_settings.main.get_value("card_highlights") in ("all", "all_always"):
-                kickers = set(x for winner in self.game.hand.winners[0] for x in winner.hand_ranking.kickers)
+                kickers = set(card for winner_index in self.game.hand.winners[0]
+                                    for card in self.game.hand.players[winner_index].hand_ranking.kickers)
 
         else:
             # Highlight the ranked cards of the client user
@@ -492,12 +494,12 @@ class GameScene(Scene):
                           sorted(self.players, key=lambda x: x.player_data.player_hand.hand_ranking.overall_score)
                           if not player.player_data.player_hand.folded]
 
-        n_winners = len(self.game.hand.winners[0])
+        n_winners = len(self.game.hand.winners[0])  # Number of main pot winners
 
-        main_winners = sorted_players[-n_winners:]
+        main_winners = sorted_players[-n_winners:]  # List of player displays who won the main pot.
         all_winners = [player for player in sorted_players
-                       if player.player_data.player_hand.pots_won]
-
+                       if player.player_data.player_hand.pots_won]  # List of player displays who won at least one of
+                                                                    # the main or side pot(s)
         """
         Reveal the players' hand rankings.
         """
@@ -523,7 +525,9 @@ class GameScene(Scene):
         """
         Create a winner crown for each winner.
         """
-        show_pots = any(max(winner.pots_won) != len(self.game.hand.pots) - 1 for winner in self.game.hand.winners[0])
+        show_pots = any(max(self.game.hand.players[winner_number].pots_won) != len(self.game.hand.pots) - 1
+                        for winner_number in self.game.hand.winners[0])
+        # If true then the player crowns show which pots have been won by its represented player.
 
         for player_display in all_winners:
             winner_crown = WinnerCrown(self, player_display, show_pots)

@@ -15,6 +15,11 @@ class HandlerPlayer(Player):
         self.client = client
 
     def receive_event(self, game_event: GameEvent):
+        """
+        When a `HandlerPlayer` receives a game event from the parent `ServerGameRoom`, it sends that event to its client
+        by sending a game event packet through the socket.
+        """
+
         # For some types of game events, send a game data packet.
         if game_event.code in GAME_SYNC_ATTRS:
             game_data: GameData = dump_game_sync_data(self.game, game_event.code)
@@ -23,7 +28,6 @@ class HandlerPlayer(Player):
             if game_event.code == GameEvent.NEW_HAND:
                 game_data.client_pocket_cards = self.player_hand.pocket_cards
 
-            print(game_data)
             send_packet(self.client.request, Packet(PacketTypes.GAME_DATA, game_data))
 
         # Forward the game event to the client by sending a game event packet.
@@ -39,8 +43,9 @@ class ServerGameRoom(PokerGame):
         self.starting_chips = 1000
         self.sb_amount = 25  # Attribute of PokerGame
 
-        # Other stuff
+        # List of non-participating players
         self.joining_queue: list[HandlerPlayer] = []
+        self.spectators: list[HandlerPlayer] = []
 
     def join(self, client: "ClientHandler") -> HandlerPlayer or None:
         """
@@ -49,25 +54,32 @@ class ServerGameRoom(PokerGame):
         if client.name in (x.name for x in self.players):
             raise ValueError("name already taken")
 
-        handler_player = HandlerPlayer(self, client, client.name, self.starting_chips)
+        new_handler_player = HandlerPlayer(self, client, client.name, self.starting_chips)
 
         if self.game_in_progress:
-            self.joining_queue.append(handler_player)
-        else:
             # TODO the program should do more stuff
-            self.players.append(handler_player)
+            self.joining_queue.append(new_handler_player)
+            new_handler_player.receive_event(GameEvent(GameEvent.RESET_PLAYERS))
+
+        else:
+            self.players.append(new_handler_player)
             self.players[-1].player_number = len(self.players) - 1
 
             self.broadcast(GameEvent(GameEvent.RESET_PLAYERS))
 
-        return handler_player
+        return new_handler_player
 
     def leave(self, client: "ClientHandler"):
         if self.game_in_progress:
             # TODO the program should do some other stuff
             client.current_player.leave_next_hand = True
+
         else:
-            self.players.remove(client.current_player)
+            if client.current_player in self.players:
+                self.players.remove(client.current_player)
+            if client.current_player in self.spectators:
+                self.spectators.remove(client.current_player)
+
             for i, player in enumerate(self.players):
                 player.player_number = i
 
@@ -110,8 +122,21 @@ class ServerGameRoom(PokerGame):
     def on_event(self, event):
         self.time_next_event(event)
 
+        """
+        Broadcast the event to the non-participating players (clients who are in the room but aren't playing the game).
+        """
+        for player in self.spectators + self.joining_queue:
+            player.receive_event(event)
+
     def prepare_next_hand(self, cycle_dealer=True):
+        old_players = self.players.copy()
         super().prepare_next_hand(cycle_dealer)
+
+        """
+        Eliminated players who are still connected to the room are moved into the spectators list.
+        """
+        eliminated_players = [x for x in old_players if x not in self.players]
+        self.spectators = [x for x in self.spectators + eliminated_players if x.client]
 
         """
         Add players from the joining queue

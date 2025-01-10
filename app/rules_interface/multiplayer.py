@@ -94,10 +94,13 @@ class MultiplayerGame(InterfaceGame):
         if "hand" in game_data.attr_dict:
             load_attrs(self.hand, game_data.attr_dict["hand"], ["players"])
 
-        if game_data.client_player_number != -1:
+            for player_hand, player_hand_attr_dict in zip(self.hand.players, game_data.attr_dict["hand"]["players"]):
+                load_attrs(player_hand, player_hand_attr_dict)
+
+        if game_data.client_player_number >= 0:
             self.client_player = self.players[game_data.client_player_number]
 
-        if game_data.client_pocket_cards and self.hand:
+        if game_data.client_pocket_cards and self.client_player.player_hand:
             self.client_player.player_hand.pocket_cards = game_data.client_pocket_cards
 
     """
@@ -133,22 +136,26 @@ class MultiplayerGame(InterfaceGame):
         """
         Handle type-specific events.
         """
-        if game_event.code == GameEvent.START_HAND:
-            self.hand.start_hand()
-
-        elif game_event.code == GameEvent.NEW_HAND:
-            if self.game_in_progress:
+        match game_event.code:
+            case GameEvent.NEW_HAND:
+                self.sync_game(game_data)
                 self.new_hand()
-            else:
-                self.start_game()
-            self.sync_game(game_data)
+                if game_data.client_pocket_cards:
+                    self.client_player.player_hand.pocket_cards = game_data.client_pocket_cards
+                else:
+                    raise AttributeError("the game data should've came with client pocket cards on a new hand, but the "
+                                         "server didn't provide it for some reason")
 
-        elif game_event.code == GameEvent.NEW_ROUND:
-            self.sync_game(game_data)
-            self.hand.next_round()
+            case GameEvent.START_HAND:
+                self.hand.start_hand()
 
-        elif game_data:
-            self.sync_game(game_data)
+            case GameEvent.NEW_ROUND | GameEvent.SKIP_ROUND:
+                self.sync_game(game_data)
+                self.hand.next_round()
+
+            case _:
+                if game_data:
+                    self.sync_game(game_data)
 
         """
         Forward the event to the game scene's event receiver
@@ -168,7 +175,11 @@ class MultiplayerGame(InterfaceGame):
     Overridden general game methods
     """
     def new_hand(self):
+        print(f"{self.game_in_progress=}")
         self.hand = MultiplayerHand(self)
+        self.game_in_progress = True
+        print("NEW HAND GRAHHHH")
+        print(f"{self.game_in_progress=}")
 
     def update(self, dt):
         super().update(dt)

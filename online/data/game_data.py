@@ -10,7 +10,7 @@ Attributes to be synced
 """
 
 GAME_SYNC_ATTRS = {
-    GameEvent.NEW_HAND: ["players", "dealer", "sb_amount", "game_in_progress"],
+    GameEvent.NEW_HAND: ["players", "dealer", "sb_amount"],
     GameEvent.NEW_ROUND: ["players", "hand"],
     GameEvent.SKIP_ROUND: ["players", "hand"],
     GameEvent.SHOWDOWN: ["players", "hand"],

@@ -187,10 +187,9 @@ class Hand:
         self.game = game
         self.players = [PlayerHand(hand=self, player_data=player) for player in game.players]
         # A list of `PlayerHand` instances based on the `PlayerData` list of the `PokerGame`.
-        self.winners: list[list] = []
-        # A list of sublists of `PlayerHand` objects who has won the hand. Each sublist contains the winner(s) of their
-        # respective pot. When there are no side pots, there is only one sublist.
-        # TODO change to list[list[int]] instead of list[list[PlayerHand]].
+        self.winners: list[list[int]] = []
+        # A list of sublists of the player numbers of players who have won the hand. Each sublist contains the winner(s)
+        # of their respective pot. When there are no side pots, there is only one sublist.
 
         self.pots: list[int] = [0]
         self.current_round_bets: int = 0
@@ -518,7 +517,7 @@ class Hand:
             winner.winnings = sum(self.pots) + self.current_round_bets
             winner.player_data.chips += winner.winnings
             winner.pots_won = [0]
-            self.winners = [[winner]]
+            self.winners = [[winner.player_data.player_number]]
 
             self.broadcast(GameEvent(GameEvent.SHOWDOWN, -1, -1, ""))
             return
@@ -554,12 +553,14 @@ class Hand:
         equal hand ranking overall score to the `current_pot_winners` list, similar to the "find max number"
         algorithm.
         """
-        self.winners = [[] for _ in range(len(self.pots))]
+        self.winners: list[list[int]] = [[] for _ in self.pots]
         current_pot_winners = []
 
         win_score = 0
         for pot_number, new_pot_participants in list(enumerate(eligibility_group))[::-1]:
             for player in new_pot_participants:
+                player: PlayerHand
+
                 score = player.hand_ranking.overall_score
 
                 if score > win_score:
@@ -567,7 +568,7 @@ class Hand:
                     current_pot_winners = []
 
                 if score >= win_score:
-                    current_pot_winners.append(player)
+                    current_pot_winners.append(player.player_data.player_number)
 
             self.winners[pot_number] = current_pot_winners.copy()
 
@@ -577,7 +578,9 @@ class Hand:
         for pot_number, pot_winners in enumerate(self.winners):
             prize = self.pots[pot_number] // len(pot_winners)
 
-            for winner in pot_winners:
+            for winner_number in pot_winners:
+                winner: PlayerHand = self.players[winner_number]
+
                 winner.pots_won.append(pot_number)
                 winner.winnings += prize
                 winner.player_data.chips += prize
@@ -648,7 +651,7 @@ class PokerGame:
         self.game_in_progress: bool = False
         self.ready_for_next_hand: bool = False
 
-        self.hand: Hand or None = None
+        self.hand: Optional[Hand] = None
 
     def start_game(self):
         self.prepare_next_hand(cycle_dealer=False)
@@ -720,7 +723,8 @@ class PokerGame:
 
     def broadcast(self, broadcast: GameEvent) -> None:
         """
-        Broadcast a `GameEvent` to all `Player` objects by calling their `receive_event` methods.
+        Broadcast a `GameEvent` to all `Player` objects and the `PokerGame` self by calling their `receive_event` and
+        `on_event` methods.
         """
         self.on_event(broadcast)
 
