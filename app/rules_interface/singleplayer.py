@@ -96,8 +96,7 @@ class SingleplayerGame(InterfaceGame):
                 self.timer_group.new_timer(10, self.broadcast, (GameEvent(GameEvent.RESET_HAND),))
 
             case GameEvent.RESET_HAND:
-                reset_players = any(x.chips <= 0 for x in self.players)
-                self.prepare_next_hand()
+                reset_players = self.prepare_next_hand()
 
                 if reset_players:
                     self.timer_group.new_timer(2.5, self.broadcast, (GameEvent(GameEvent.RESET_PLAYERS),))

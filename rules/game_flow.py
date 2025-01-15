@@ -676,7 +676,7 @@ class PokerGame:
             self.game_in_progress = False
             return False
 
-    def prepare_next_hand(self, cycle_dealer=True) -> None:
+    def prepare_next_hand(self, cycle_dealer=True) -> bool:
         """
         Reset the hand and prepare for the next hand: cycle the dealer, check the players' amount of chips, and remove
         any players that are bankrupt.
@@ -693,13 +693,15 @@ class PokerGame:
                 player.player_number = -2
                 player.leave_next_hand = True
 
+        should_reset_players = any(x.leave_next_hand for x in self.players)
+
         """
         Cycle dealer
         """
         if cycle_dealer:
             while True:
                 self.dealer = (self.dealer + 1) % len(self.players)
-                if self.players[self.dealer].chips > 0:
+                if not self.players[self.dealer].leave_next_hand:
                     break
 
             self.dealer -= sum(x.leave_next_hand for x in self.players[:self.dealer])
@@ -714,6 +716,8 @@ class PokerGame:
         """
         for i, player in enumerate(self.players):
             player.player_number = i
+
+        return should_reset_players
 
     def on_event(self, event):
         """

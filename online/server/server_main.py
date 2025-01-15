@@ -82,7 +82,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
 
     def handle_basic_request(self, packet: packets.Packet):
         if type(packet.content) is not str:
-            self.send_basic_response("ERROR contents of a basic request packet must be str")
+            self.send_basic_response("ERROR contents of a basic request packet must be a string")
             return
 
         log(f"Received basic request: {packet.content}")
@@ -120,8 +120,17 @@ class ClientHandler(socketserver.BaseRequestHandler):
             case _:
                 self.send_basic_response("ERROR invalid request command")
 
-    def send_basic_response(self, content: Any):
-        send_packet(self.request, Packet(PacketTypes.BASIC_RESPONSE, content=content))
+    def send_basic_response(self, content: Any) -> int:
+        return self.send_packet(Packet(PacketTypes.BASIC_RESPONSE, content=content))
+
+    def send_packet(self, packet: Packet) -> int:
+        try:
+            send_packet(self.request, packet)
+            return 0
+        except (OSError, TimeoutError, ConnectionResetError, socket.error):
+            log("Failed to send packet:", packet, symbol="X")
+            return 1
+
 
     def join_room(self, room_code: str):
         self.server: AllinServer
@@ -145,11 +154,13 @@ class ClientHandler(socketserver.BaseRequestHandler):
         if not self.current_room:
             return
 
-        log(f"Player has left the room. {len(self.current_room.players) - 1} player(s) remaining.")
+        old_room = self.current_room
 
         self.current_room.leave(self)
         self.current_room = None
         self.current_player = None
+
+        log(f"Player has left the room. {sum(not x.leave_next_hand for x in old_room.players)} player(s) remaining.")
 
 
 class AllinServer(socketserver.ThreadingTCPServer):
@@ -163,7 +174,7 @@ class AllinServer(socketserver.ThreadingTCPServer):
         threading.Thread(target=self.console, name="Server Console").start()
 
         threading.current_thread().name = "Server Listener"
-        log(f"Server is now listening on port {PORT}.", symbol=POWER_SYMBOL)
+        log(f"Server has been bound to address {HOST} on port {PORT}.", symbol=POWER_SYMBOL)
         self.serve_forever()
         log("Server has been shut down.", symbol=POWER_SYMBOL)
 

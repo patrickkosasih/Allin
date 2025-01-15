@@ -231,16 +231,17 @@ class GameScene(Scene):
 
             player_display.move_anim(1.5 + i * time_interval, pos)
 
+        screen_center = self.rect.center
+
         for i, old_player_display in enumerate(old_group.sprites()):
             if old_player_display not in self.players:
                 """
                 3. Remove player display
                 """
+                start_pos = old_player_display.rect.center
+                end_pos = screen_center + 3 * (Vector2(start_pos) - screen_center)  # Offscreen
 
-                pos = self.table.get_edge_pos(self.table.get_player_rotation(i, len(old_group)),
-                                              (3, 3))
-
-                old_player_display.move_anim(1.5 + i * time_interval, pos,
+                old_player_display.move_anim(1.5 + i * time_interval, end_pos,
                                              call_on_finish=lambda x=old_player_display: self.all_sprites.remove(x))
 
     def init_action_buttons(self):
@@ -328,15 +329,16 @@ class GameScene(Scene):
 
         :param unhighlight: If set to True then clear all the highlights.
         """
-        # TODO Hey..... IMPROVE THIS AS WELL
-
         if app_settings.main.get_value("card_highlights") == "off":
             return
 
-        ranked_cards: set
+        ranked_cards: set = set()
         kickers: set = set()
 
-        if showdown:
+        if unhighlight:
+            pass
+
+        elif showdown:
             # Showdown: Highlight the winning hand(s)
             ranked_cards = set(card for winner_index in self.game.hand.winners[0]
                                     for card in self.game.hand.players[winner_index].hand_ranking.ranked_cards)
@@ -358,7 +360,7 @@ class GameScene(Scene):
 
         for card_display in card_displays:
             if card_display.is_revealed:
-                card_display.show_highlight(card_display.card_data in highlighted_cards and not unhighlight,
+                card_display.show_highlight(card_display.card_data in highlighted_cards,
                                             ranked=card_display.card_data not in kickers)
 
     def fold_cards(self, i: int):

@@ -68,8 +68,10 @@ class MultiplayerGame(InterfaceGame):
         """
         this will be our last jujutsu kaisen, sukuna
         """
+        # Sync the attributes of `self`
         load_attrs(self, game_data.attr_dict, ["players", "hand"])
 
+        # Sync the attributes of `self.players` (list of `Player`)
         if "players" in game_data.attr_dict:
             old_players_dict = {x.name: x for x in self.players}
             new_players_list = []
@@ -91,15 +93,21 @@ class MultiplayerGame(InterfaceGame):
             for i, player in enumerate(self.players):
                 player.player_number = i
 
+        # Sync the attributes of `self.hand` (instance of `Hand`)
         if "hand" in game_data.attr_dict:
             load_attrs(self.hand, game_data.attr_dict["hand"], ["players"])
 
             for player_hand, player_hand_attr_dict in zip(self.hand.players, game_data.attr_dict["hand"]["players"]):
                 load_attrs(player_hand, player_hand_attr_dict)
 
+        # Determine the client player object
         if game_data.client_player_number >= 0:
+            print("client player number is", game_data.client_player_number)
             self.client_player = self.players[game_data.client_player_number]
+        elif game_data.client_player_number == -2:
+            self.client_player.player_number = -2
 
+        # Sync the pocket cards of the client player
         if game_data.client_pocket_cards and self.client_player.player_hand:
             self.client_player.player_hand.pocket_cards = game_data.client_pocket_cards
 
@@ -175,11 +183,8 @@ class MultiplayerGame(InterfaceGame):
     Overridden general game methods
     """
     def new_hand(self):
-        print(f"{self.game_in_progress=}")
         self.hand = MultiplayerHand(self)
         self.game_in_progress = True
-        print("NEW HAND GRAHHHH")
-        print(f"{self.game_in_progress=}")
 
     def update(self, dt):
         super().update(dt)

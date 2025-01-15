@@ -144,6 +144,8 @@ class ClientComms:
         if not ClientComms.online:
             return ""
 
+        check_delay = 0.05
+
         req_time = time.time_ns()
         ClientComms.request_queue.append(req_time)
 
@@ -152,7 +154,7 @@ class ClientComms:
 
         # Wait until it's the call's turn on the request queue.
         while ClientComms.request_queue[0] != req_time:
-            yield 0.001
+            yield check_delay
 
         # Send request
         send_task = app_async.ThreadWaiter(ClientComms.send_packet, (Packet(PacketTypes.BASIC_REQUEST, content=command),))
@@ -160,16 +162,16 @@ class ClientComms:
 
         # Wait for response
         wait_time = 0
-        check_delay = 0.01
 
         while not ClientComms.last_response:
             wait_time += check_delay
             yield check_delay
 
-            if check_delay >= 5:
+            if wait_time >= 3:
                 ClientComms.request_queue.pop(0)
                 ClientComms.last_response = ""
-                raise TimeoutError("server did not reply with a basic response")
+                log(f"Request: {command} -> Timed out: the server did not send back a basic response.")
+                return "ERROR timeout"
 
         response = ClientComms.last_response
         log(f"Request: {command} -> Response: {response}")
