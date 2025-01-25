@@ -13,7 +13,7 @@ from online.data.game_data import GameData, load_attrs, GAME_SYNC_ATTRS
 from online.data.packets import Packet, PacketTypes
 from app.rules_interface.interface import InterfaceGame
 from rules.basic import HandRanking
-from rules.game_flow import GameEvent, Player, Hand, Actions
+from rules.game_flow import GameEvent, Player, Hand, Actions, PlayerHand
 
 
 class MultiplayerHand(Hand):
@@ -22,7 +22,7 @@ class MultiplayerHand(Hand):
         self.game: MultiplayerGame
         self.deck = []
 
-        self.client_player_hand = self.game.client_player.player_hand
+        self.client_player_hand: PlayerHand or None = self.game.client_player.player_hand
 
     def deal_cards(self):
         """
@@ -51,7 +51,8 @@ class MultiplayerHand(Hand):
         """
         Reset player hands
         """
-        self.client_player_hand.hand_ranking = HandRanking(self.community_cards + self.client_player_hand.pocket_cards)
+        if self.client_player_hand:
+            self.client_player_hand.hand_ranking = HandRanking(self.community_cards + self.client_player_hand.pocket_cards)
 
         for player in self.players:
             player.current_round_spent = 0
@@ -62,7 +63,7 @@ class MultiplayerHand(Hand):
 class MultiplayerGame(InterfaceGame):
     def __init__(self):
         super().__init__()
-        self.client_player = Player(self, "Placeholder thingy", 1000)  # TODO change later
+        self.client_player = Player(self, "Placeholder thingy", 1000)
 
     def sync_game(self, game_data: GameData):
         """
@@ -94,7 +95,7 @@ class MultiplayerGame(InterfaceGame):
                 player.player_number = i
 
         # Sync the attributes of `self.hand` (instance of `Hand`)
-        if "hand" in game_data.attr_dict:
+        if "hand" in game_data.attr_dict and self.hand:
             load_attrs(self.hand, game_data.attr_dict["hand"], ["players"])
 
             for player_hand, player_hand_attr_dict in zip(self.hand.players, game_data.attr_dict["hand"]["players"]):
@@ -102,7 +103,6 @@ class MultiplayerGame(InterfaceGame):
 
         # Determine the client player object
         if game_data.client_player_number >= 0:
-            print("client player number is", game_data.client_player_number)
             self.client_player = self.players[game_data.client_player_number]
         elif game_data.client_player_number == -2:
             self.client_player.player_number = -2
@@ -160,6 +160,23 @@ class MultiplayerGame(InterfaceGame):
             case GameEvent.NEW_ROUND | GameEvent.SKIP_ROUND:
                 self.sync_game(game_data)
                 self.hand.next_round()
+
+            case GameEvent.JOIN_MID_GAME:
+                self.sync_game(game_data)
+                self.new_hand()
+                self.sync_game(game_data)
+
+                # Convert the last action and bet amount of all the player hands into a series of game events to update
+                # the sub-texts of the player displays in the game scene.
+                for player_number, player_hand in enumerate(self.hand.players):
+                    if player_hand.last_action and player_hand.last_action != "folded":
+                        ClientComms.game_event_queue.append(GameEvent(
+                            code=GameEvent.DEFAULT_ACTION,
+                            prev_player=player_number,
+                            next_player=-1,
+                            message=player_hand.last_action,
+                            bet_amount=player_hand.current_round_spent)
+                        )
 
             case _:
                 if game_data:

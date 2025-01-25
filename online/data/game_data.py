@@ -10,19 +10,21 @@ Attributes to be synced
 """
 
 GAME_SYNC_ATTRS = {
-    GameEvent.NEW_HAND: ["players", "dealer", "sb_amount"],
-    GameEvent.NEW_ROUND: ["players", "hand"],
-    GameEvent.SKIP_ROUND: ["players", "hand"],
-    GameEvent.SHOWDOWN: ["players", "hand"],
-    GameEvent.RESET_PLAYERS: ["players"]
+    GameEvent.NEW_HAND:      ["players", "dealer", "sb_amount"],
+    GameEvent.NEW_ROUND:     ["players", "hand"],
+    GameEvent.SKIP_ROUND:    ["players", "hand"],
+    GameEvent.SHOWDOWN:      ["players", "hand"],
+    GameEvent.RESET_PLAYERS: ["players"],
+    GameEvent.JOIN_MID_GAME: ["players", "hand", "dealer", "sb_amount"],
 }
 # `PokerGame` attributes to sync according to the type of game event.
 
-HAND_SYNC_ATTRS = ["players", "winners", "pots", "community_cards"]  # `Hand` attributes to sync.
+HAND_SYNC_ATTRS = ["players", "winners", "pots", "community_cards", "current_round_bets"]  # `Hand` attributes to sync.
 PLAYER_SYNC_ATTRS = ["name", "chips", "player_number"]  # `Player` attributes to sync.
+
 PLAYER_HAND_SYNC_ATTRS = ["pot_eligibility", "folded", "all_in"]  # `PlayerHand` attributes to sync.
-PLAYER_HAND_SYNC_ATTRS_SD = ["pocket_cards", "hand_ranking", "winnings", "pots_won"] + PLAYER_HAND_SYNC_ATTRS
-# `PlayerHand` attributes to sync on showdowns.
+PLAYER_HAND_SYNC_ATTRS_SD = ["pocket_cards", "hand_ranking", "winnings", "pots_won"]  # Extra `PlayerHand` attributes to sync on showdowns.
+PLAYER_HAND_SYNC_ATTRS_MG = ["current_round_spent", "last_action"] # Extra `PlayerHand` attributes to sync on "join mid-game" events.
 
 
 @dataclass
@@ -84,11 +86,12 @@ def dump_game_sync_data(game: PokerGame, game_event_code) -> GameData:
     if "hand" in attr_list:
         attr_dict["hand"] = dump_select_attrs(game.hand, HAND_SYNC_ATTRS, ["players"])
 
+        phand_sync_attrs = PLAYER_HAND_SYNC_ATTRS
         if game_event_code == GameEvent.SHOWDOWN:
-            attr_dict["hand"]["players"] = [dump_select_attrs(player, PLAYER_HAND_SYNC_ATTRS_SD)
-                                            for player in game.hand.players]
-        else:
-            attr_dict["hand"]["players"] = [dump_select_attrs(player, PLAYER_HAND_SYNC_ATTRS)
-                                            for player in game.hand.players]
+            phand_sync_attrs += PLAYER_HAND_SYNC_ATTRS_SD
+        elif game_event_code == GameEvent.JOIN_MID_GAME:
+            phand_sync_attrs += PLAYER_HAND_SYNC_ATTRS_MG
+
+        attr_dict["hand"]["players"] = [dump_select_attrs(player, phand_sync_attrs) for player in game.hand.players]
 
     return GameData(attr_dict)

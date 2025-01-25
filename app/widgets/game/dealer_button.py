@@ -68,7 +68,7 @@ class DealerButton(Widget):
         dealer/blinds (`start_pos_button`), or starts moving from offscreen (if `start_pos_button` is set to None).
         """
 
-        end_pos = player.head_base.rect.global_rect.midright
+        end_pos = Vector2(player.rect_after_move.topleft) + player.head_base.rect.midright
         start_pos = None
 
         if not self._shown:

@@ -63,17 +63,18 @@ class ServerGameRoom(PokerGame):
         When the game is in progress, the player is put in the joining queue, and when a new hand starts, the players in
         the queue would then join the game.
         """
-        if client.name in (x.name for x in self.players):
+        if client.name in (x.name for x in self.players if not x.leave_next_hand):
             raise ValueError("name already taken")
 
         new_handler_player = HandlerPlayer(self, client, client.name, self.starting_chips)
 
         if self.game_in_progress:
             self.joining_queue.append(new_handler_player)
-            new_handler_player.receive_event(GameEvent(GameEvent.RESET_PLAYERS))
 
-            # TODO the program should do more stuff: send a chain of events and stuff to the player or some shit,
-            #  maybe make a new type of game event?
+            if self.hand.winners:
+                new_handler_player.send_game_event(GameEvent(GameEvent.RESET_PLAYERS))
+            else:
+                new_handler_player.send_game_event(GameEvent(GameEvent.JOIN_MID_GAME))
 
         else:
             self.players.append(new_handler_player)
@@ -153,8 +154,7 @@ class ServerGameRoom(PokerGame):
         """
         Broadcast the event to the non-participating players (clients who are in the room but aren't playing the game).
         """
-        for player in self.spectators:
-        # for player in self.spectators + self.joining_queue:  # broadcasting to joining queues is temporarily disabled
+        for player in self.spectators + self.joining_queue:
             player.receive_event(event)
 
     def prepare_next_hand(self, cycle_dealer=True) -> bool:

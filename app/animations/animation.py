@@ -51,7 +51,7 @@ class Animation(ABC):
         self.interpol_phase = self.interpolation(self.phase)
 
         if self.phase >= 1:
-            self.stop()
+            self.stop(stop_midway=False)
         else:
             self.update_anim()
 
@@ -89,7 +89,7 @@ class Animation(ABC):
         """
         self.running = False
 
-    def stop(self):
+    def stop(self, stop_midway=True):
         """
         Stop the animation. Once it's stopped, the animation cannot be continued anymore.
         """
@@ -102,8 +102,9 @@ class Animation(ABC):
         self.anim_group.remove(self)
         self.anim_group = None
 
-        self.finish()
-        self.call_on_finish()
+        if not stop_midway:
+            self.finish()
+            self.call_on_finish()
 
 
 class AnimGroup:

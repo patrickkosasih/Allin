@@ -50,6 +50,7 @@ class GameEvent:
     SHOWDOWN = 7
     RESET_HAND = 8
     RESET_PLAYERS = 9
+    JOIN_MID_GAME = 10
 
     # Class fields
     code: int

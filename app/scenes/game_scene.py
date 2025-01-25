@@ -46,6 +46,7 @@ class GameScene(Scene):
         self.side_menu.set_shown(False, 0)
 
         self.flash_fac = 0
+        self.joining_mid_game = False
 
         """
         Table and players
@@ -112,6 +113,7 @@ class GameScene(Scene):
                 self.reset_players()
 
             case GameEvent.NEW_HAND:
+                self.move_dealer_button()
                 self.deal_cards()
 
             case GameEvent.NEW_ROUND | GameEvent.SKIP_ROUND:
@@ -122,6 +124,19 @@ class GameScene(Scene):
 
             case GameEvent.RESET_HAND:
                 self.reset_hand()
+
+            case GameEvent.JOIN_MID_GAME:
+                # Set `self.joining_mid_game` to true for a few seconds.
+                self.joining_mid_game = True
+                app_timer.Timer(1.5, lambda: setattr(self, "joining_mid_game", False))
+
+                # Set up all the stuffs.
+                self.reset_players()
+                self.deal_cards()
+                app_timer.Timer(1, self.move_dealer_button, args=(len(self.game.hand.community_cards) == 0,))
+
+                if self.game.hand.community_cards:
+                    self.next_round()
 
             case _:
                 player_action = True
@@ -152,7 +167,8 @@ class GameScene(Scene):
                 """
                 Chips sound effect
                 """
-                play_sound("assets/audio/game/actions/chips.mp3", 0.5)
+                if not self.joining_mid_game:
+                    play_sound("assets/audio/game/actions/chips.mp3", 0.5)
 
             self.players.sprites()[event.prev_player].set_sub_text_anim(action_str)
             self.players.sprites()[event.prev_player].update_chips()
@@ -160,7 +176,10 @@ class GameScene(Scene):
         """
         Action sound effect
         """
-        if event.code == GameEvent.START_HAND:
+        if self.joining_mid_game:
+            pass  # Sound effect is not played when the game is preparing to join mid-game.
+
+        elif event.code == GameEvent.START_HAND:
             if is_sb:
                 play_sound("assets/audio/game/rounds/blinds.mp3")
             if event.message == "all in":
@@ -293,15 +312,18 @@ class GameScene(Scene):
 
     def deal_cards(self):
         """
-        Deals the pocket cards to all players and also moves the dealer button.
+        Create card displays that represent the pocket cards of each player, and move them to the position of their
+        respective players.
         """
-        self.move_dealer_button()
-
         play_sound("assets/audio/game/card/deal cards.mp3")
 
         for i, player_display in enumerate(self.players.sprites()):
+            if player_display.player_data.player_hand.folded:
+                continue
+
             for j in range(2):  # Every player has 2 pocket cards
-                x, y = player_display.rect.midtop
+                player_display: PlayerDisplay
+                x, y = player_display.rect_after_move.midtop
                 x += w_percent_to_px(1) * (1 if j else -1)
 
                 start_pos = self.table.get_player_pos(i, (2.75, 2.75), 2)
@@ -385,11 +407,8 @@ class GameScene(Scene):
 
     def next_round(self):
         """
-        The method that is called when the hand advances to the next round (a NEW_ROUND game event is received).
+        Reveal the next community cards, hide the blinds buttons, and update the client player's hand ranking.
         """
-
-        round_names = {3: "flop", 4: "turn", 5: "river"}
-
         if self.game.hand.winners:
             return
 
@@ -417,22 +436,27 @@ class GameScene(Scene):
         """
         Card sliding sound effect
         """
+        round_names = {3: "flop", 4: "turn", 5: "river"}
+
         play_sound(f"assets/audio/game/card/slide/{round_names[len(self.community_cards)]}.mp3")
 
-        app_timer.Timer(anim_delay,
-                        lambda: play_sound(f"assets/audio/game/rounds/{round_names[len(self.community_cards)]}.mp3")
-                        )
+        if not self.joining_mid_game:
+            app_timer.Timer(
+                anim_delay,
+                lambda: play_sound(f"assets/audio/game/rounds/{round_names[len(self.community_cards)]}.mp3")
+            )
 
         """
         Update hand ranking
         """
-        ranking_int = self.game.client_player.player_hand.hand_ranking.ranking_type
-        ranking_str = HandRanking.TYPE_STR[ranking_int].capitalize()
-        if self.game.client_player.player_hand.folded:
-            ranking_str = "Folded:  " + ranking_str
+        if self.game.client_player.player_hand:
+            ranking_int = self.game.client_player.player_hand.hand_ranking.ranking_type
+            ranking_str = HandRanking.TYPE_STR[ranking_int].capitalize()
+            if self.game.client_player.player_hand.folded:
+                ranking_str = "Folded:  " + ranking_str
 
-        app_timer.Timer(anim_delay, self.ranking_text.set_text_anim, (ranking_str,))
-        app_timer.Timer(anim_delay + 0.15, self.highlight_cards)
+            app_timer.Timer(anim_delay, self.ranking_text.set_text_anim, (ranking_str,))
+            app_timer.Timer(anim_delay + 0.15, self.highlight_cards)
 
         """
         Hide blinds button and show ranking text on the flop round
@@ -466,15 +490,6 @@ class GameScene(Scene):
                 for i, card in enumerate(player_display.pocket_cards.sprites()):
                     card.card_data = player_display.player_data.player_hand.pocket_cards[i]
                     card.reveal(random.uniform(1, 1.5), sfx=False)
-
-        """
-        Get a sorted list of player indexes sorted from the lowest hand ranking to the winners.
-        """
-        get_score = lambda x: x[1].player_data.player_hand.hand_ranking.overall_score
-        # A lambda function that gets the player's overall score of an (index, player display) tuple.
-
-        is_not_folded = lambda x: not x.player_data.player_hand.folded
-        # A lambda function that returns True if the player (`x: PlayerDisplay`) is not folded.
 
         """
         Start revealing the hand rankings
@@ -621,23 +636,29 @@ class GameScene(Scene):
         self.community_cards.empty()
         self.winner_crowns.empty()
 
-    def move_dealer_button(self):
+    def move_dealer_button(self, blinds_button=True):
         """
         Move the dealer button to the player display of the current dealer, then shows the SB and BB button and moves it
         to their respective player displays.
         """
 
         dealer: PlayerDisplay = self.players.sprites()[self.game.dealer]
-        sb: PlayerDisplay = self.players.sprites()[self.game.hand.blinds[0]]
-        bb: PlayerDisplay = self.players.sprites()[self.game.hand.blinds[1]]
 
-        app_timer.Sequence([
-            lambda: self.dealer_button.move_to_player(0.75, dealer, interpolation=ease_in),
-            0.751,
-            lambda: self.sb_button.move_to_player(0.3, sb, self.dealer_button, interpolation=linear),
-            0.301,
-            lambda: self.bb_button.move_to_player(0.75, bb, self.sb_button, interpolation=ease_out),
-        ])
+        if blinds_button:
+            sb: PlayerDisplay = self.players.sprites()[self.game.hand.blinds[0]]
+            bb: PlayerDisplay = self.players.sprites()[self.game.hand.blinds[1]]
+
+            app_timer.Sequence([
+                lambda: self.dealer_button.move_to_player(0.75, dealer, interpolation=ease_in),
+                0.76,
+                lambda: self.sb_button.move_to_player(0.3, sb, self.dealer_button, interpolation=linear),
+                0.31,
+                lambda: self.bb_button.move_to_player(0.75, bb, self.sb_button, interpolation=ease_out),
+            ])
+
+        else:
+            self.dealer_button.move_to_player(1, dealer, interpolation=ease_out)
+
 
     def update_chips_texts(self, update_players=True):
         self.side_pot_panel.update_all_pots()

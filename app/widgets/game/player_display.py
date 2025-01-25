@@ -7,7 +7,7 @@ from app.shared import *
 
 from app.animations.var_slider import VarSlider
 from app.animations.interpolations import ease_out
-from app.widgets.widget import Widget, WidgetComponent
+from app.widgets.widget import Widget, WidgetComponent, AutoRect
 
 from typing import TYPE_CHECKING
 if TYPE_CHECKING:
@@ -76,11 +76,11 @@ class PlayerDisplay(Widget):
         self.player_data: rules.game_flow.Player = player_data
 
         self.sub_text_str = ""
-        self.sub_pos: float = 0
-        """`sub_pos` determines the current position of the sub. 0 being retracted (hidden behind the head), and 1 being
-        extended (placed right below the head)."""
-
+        self.sub_pos: float = 0  # A value that can be set between 0 and 1, where 0 means the sub text is retracted
+                                 # (hidden behind the head) and 1 being extended.
         self.chips_text_val: int = self.player_data.chips
+        self.rect_after_move = AutoRect(0, 0, 0, 0)
+        # A rect that shows the expected end position of the player display after being moved.
 
         self.init_components()
 
@@ -151,8 +151,6 @@ class PlayerDisplay(Widget):
     def set_sub_text_anim(self, new_text: str):
         """
         Set the sub text with an animation.
-
-        :param new_text: The new text.
         """
 
         extended = self.sub_pos >= 0.5
@@ -210,10 +208,13 @@ class PlayerDisplay(Widget):
     Overridden animation methods
     """
     def move_anim(self, duration: int or float, end_pos: tuple or Vector2,
-                  unit=None, anchor=None, pivot=None, start_pos: tuple or None = None,
+                  unit="px", anchor="tl", pivot="ctr", start_pos: tuple or None = None,
                   **kwargs) -> "MoveAnimation" or None:
 
-        super().move_anim(duration, end_pos, unit, anchor, pivot, start_pos, **kwargs)
+        self.rect_after_move = AutoRect(*end_pos, self.rect.w, self.rect.h, (unit, "px"), anchor, pivot)
+
+        anim = super().move_anim(duration, end_pos, unit, anchor, pivot, start_pos, **kwargs)
+        return anim
 
     def fade_anim(self, duration: int or float, end_val: int, **kwargs) -> "FadeAlphaAnimation" or None:
         super().fade_anim(duration, end_val, **kwargs)
