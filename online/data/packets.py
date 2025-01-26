@@ -11,7 +11,6 @@ class PacketTypes:
 
     GAME_ACTION = 2
     GAME_EVENT = 3
-    GAME_DATA = 4
 
 
 @dataclass

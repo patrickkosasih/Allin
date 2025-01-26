@@ -11,7 +11,7 @@ from typing import Generator, Optional
 
 from typing import TYPE_CHECKING
 
-from online.data.game_data import GameData
+from online.data.game_sync import GameSyncEvent
 from rules.game_flow import GameEvent
 
 if TYPE_CHECKING:
@@ -26,14 +26,6 @@ from online.data.packets import Packet, PacketTypes
 
 HOST = "localhost"  # Temporary server address config
 PORT = 32727
-
-
-# class OnlineEvents:
-#     COMMS_STATUS = pygame.event.custom_type()
-#
-#     ROOM_STATUS = pygame.event.custom_type()
-#     GAME_DATA = pygame.event.custom_type()
-#     GAME_EVENT = pygame.event.custom_type()
 
 
 def log(*message):
@@ -52,8 +44,7 @@ class ClientComms:
 
     app: Optional["App"] = None
     current_game: "MultiplayerGame" = None
-    game_event_queue: list[GameEvent] = []
-    game_data_queue: list[GameData] = []
+    game_event_queue: list[GameEvent or GameSyncEvent] = []
 
     @staticmethod
     def connect(threaded=True):
@@ -108,12 +99,8 @@ class ClientComms:
                         ClientComms.last_response = packet.content
 
                     case PacketTypes.GAME_EVENT:
-                        log("Received game event packet:", packet.content)
+                        log("Received game event:", packet.content)
                         ClientComms.game_event_queue.append(packet.content)
-
-                    case PacketTypes.GAME_DATA:
-                        log("Received game data packet:", packet.content)
-                        ClientComms.game_data_queue.append(packet.content)
 
         except (ConnectionResetError, TimeoutError, OSError, EOFError) as e:
             log(f"Disconnected from server: {e}")

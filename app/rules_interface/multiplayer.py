@@ -9,7 +9,7 @@ functionality of their parent classes disabled, because most of the calculations
 job of these classes is only to interface the server-side game to the player's screen.
 """
 from online.client.client_comms import ClientComms
-from online.data.game_data import GameData, load_attrs, GAME_SYNC_ATTRS
+from online.data.game_sync import GameSyncEvent, load_attrs, GAME_SYNC
 from online.data.packets import Packet, PacketTypes
 from app.rules_interface.interface import InterfaceGame
 from rules.basic import HandRanking
@@ -65,19 +65,19 @@ class MultiplayerGame(InterfaceGame):
         super().__init__()
         self.client_player = Player(self, "Placeholder thingy", 1000)
 
-    def sync_game(self, game_data: GameData):
+    def sync_game(self, game_sync_event: GameSyncEvent):
         """
         this will be our last jujutsu kaisen, sukuna
         """
         # Sync the attributes of `self`
-        load_attrs(self, game_data.attr_dict, ["players", "hand"])
+        load_attrs(self, game_sync_event.attr_dict, ["players", "hand"])
 
         # Sync the attributes of `self.players` (list of `Player`)
-        if "players" in game_data.attr_dict:
+        if "players" in game_sync_event.attr_dict:
             old_players_dict = {x.name: x for x in self.players}
             new_players_list = []
 
-            for player_attr_dict in game_data.attr_dict["players"]:
+            for player_attr_dict in game_sync_event.attr_dict["players"]:
                 if player_attr_dict["name"] in old_players_dict:
                     # Existing player
                     player = old_players_dict[player_attr_dict["name"]]
@@ -95,33 +95,33 @@ class MultiplayerGame(InterfaceGame):
                 player.player_number = i
 
         # Sync the attributes of `self.hand` (instance of `Hand`)
-        if "hand" in game_data.attr_dict and self.hand:
-            load_attrs(self.hand, game_data.attr_dict["hand"], ["players"])
+        if "hand" in game_sync_event.attr_dict and self.hand:
+            load_attrs(self.hand, game_sync_event.attr_dict["hand"], ["players"])
 
-            for player_hand, player_hand_attr_dict in zip(self.hand.players, game_data.attr_dict["hand"]["players"]):
+            for player_hand, player_hand_attr_dict in zip(self.hand.players, game_sync_event.attr_dict["hand"]["players"]):
                 load_attrs(player_hand, player_hand_attr_dict)
 
         # Determine the client player object
-        if game_data.client_player_number >= 0:
-            self.client_player = self.players[game_data.client_player_number]
-        elif game_data.client_player_number == -2:
+        if game_sync_event.client_player_number >= 0:
+            self.client_player = self.players[game_sync_event.client_player_number]
+        elif game_sync_event.client_player_number == -2:
             self.client_player.player_number = -2
 
         # Sync the pocket cards of the client player
-        if game_data.client_pocket_cards and self.client_player.player_hand:
-            self.client_player.player_hand.pocket_cards = game_data.client_pocket_cards
+        if game_sync_event.client_pocket_cards and self.client_player.player_hand:
+            self.client_player.player_hand.pocket_cards = game_sync_event.client_pocket_cards
 
     """
     Overridden input and output methods
     """
-    def on_event(self, game_event: GameEvent, game_data: GameData or None = None):
+    def on_event(self, game_event: GameEvent, game_sync_event: GameSyncEvent or None = None):
         """
 
         :param game_event:
-        :param game_data:
+        :param game_sync_event:
         """
-        if game_event.code in GAME_SYNC_ATTRS and not game_data:
-            raise ValueError(f"game event of type {game_event.code} must be provided with a game data")
+        if game_event.code in GAME_SYNC and not game_sync_event:
+            raise ValueError(f"game event of type {game_event.code} must be provided with a game sync event")
 
         """
         Update the game based on only the game event.
@@ -146,10 +146,10 @@ class MultiplayerGame(InterfaceGame):
         """
         match game_event.code:
             case GameEvent.NEW_HAND:
-                self.sync_game(game_data)
+                self.sync_game(game_sync_event)
                 self.new_hand()
-                if game_data.client_pocket_cards:
-                    self.client_player.player_hand.pocket_cards = game_data.client_pocket_cards
+                if game_sync_event.client_pocket_cards:
+                    self.client_player.player_hand.pocket_cards = game_sync_event.client_pocket_cards
                 else:
                     raise AttributeError("the game data should've came with client pocket cards on a new hand, but the "
                                          "server didn't provide it for some reason")
@@ -158,13 +158,13 @@ class MultiplayerGame(InterfaceGame):
                 self.hand.start_hand()
 
             case GameEvent.NEW_ROUND | GameEvent.SKIP_ROUND:
-                self.sync_game(game_data)
+                self.sync_game(game_sync_event)
                 self.hand.next_round()
 
             case GameEvent.JOIN_MID_GAME:
-                self.sync_game(game_data)
+                self.sync_game(game_sync_event)
                 self.new_hand()
-                self.sync_game(game_data)
+                self.sync_game(game_sync_event)
 
                 # Convert the last action and bet amount of all the player hands into a series of game events to update
                 # the sub-texts of the player displays in the game scene.
@@ -179,8 +179,8 @@ class MultiplayerGame(InterfaceGame):
                         )
 
             case _:
-                if game_data:
-                    self.sync_game(game_data)
+                if game_sync_event:
+                    self.sync_game(game_sync_event)
 
         """
         Forward the event to the game scene's event receiver
@@ -206,11 +206,12 @@ class MultiplayerGame(InterfaceGame):
     def update(self, dt):
         super().update(dt)
 
-        if ClientComms.game_event_queue and (ClientComms.game_data_queue or
-                                             ClientComms.game_event_queue[0].code not in GAME_SYNC_ATTRS):
+        if ClientComms.game_event_queue:
+            event: GameEvent or GameSyncEvent = ClientComms.game_event_queue.pop(0)
 
-            game_event: GameEvent = ClientComms.game_event_queue.pop(0)
-            game_data: GameData or None = ClientComms.game_data_queue.pop(0) \
-                                          if game_event.code in GAME_SYNC_ATTRS else None
-
-            self.on_event(game_event, game_data)
+            if type(event) is GameEvent:
+                self.on_event(event)
+            elif type(event) is GameSyncEvent:
+                self.on_event(GameEvent(event.code), event)
+            else:
+                raise TypeError(f"invalid object type in the game event queue: {type(event)}")

@@ -1,6 +1,6 @@
 import threading
 
-from online.data.game_data import GameData, dump_game_sync_data, GAME_SYNC_ATTRS
+from online.data.game_sync import GameSyncEvent, dump_game_sync_data, GAME_SYNC
 from online.data.packets import send_packet, PacketTypes, Packet
 from rules.game_flow import Player, PokerGame, GameEvent, Actions
 
@@ -28,17 +28,18 @@ class HandlerPlayer(Player):
             return
 
         # For some types of game events, send a game data packet.
-        if game_event.code in GAME_SYNC_ATTRS:
-            game_data: GameData = dump_game_sync_data(self.game, game_event.code)
-            game_data.client_player_number = self.player_number
+        if game_event.code in GAME_SYNC:
+            game_sync_event: GameSyncEvent = dump_game_sync_data(self.game, game_event.code)
+            game_sync_event.client_player_number = self.player_number
 
             if game_event.code == GameEvent.NEW_HAND:
-                game_data.client_pocket_cards = self.player_hand.pocket_cards
+                game_sync_event.client_pocket_cards = self.player_hand.pocket_cards
 
-            self.client.send_packet(Packet(PacketTypes.GAME_DATA, game_data))
+            self.client.send_packet(Packet(PacketTypes.GAME_EVENT, game_sync_event))
 
-        # Forward the game event to the client by sending a game event packet.
-        self.client.send_packet(Packet(PacketTypes.GAME_EVENT, game_event))
+        else:
+            # Forward the game event to the client by sending a game event packet.
+            self.client.send_packet(Packet(PacketTypes.GAME_EVENT, game_event))
 
 
 class ServerGameRoom(PokerGame):

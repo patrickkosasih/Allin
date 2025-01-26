@@ -291,6 +291,7 @@ class Hand:
 
                 # If everyone except one player folds, then that player wins.
                 if sum(not player.folded for player in self.players) == 1:
+                    action_broadcast.next_player = -1
                     self.showdown()
 
             case Actions.CALL:   # Check/call

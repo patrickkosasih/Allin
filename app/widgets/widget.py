@@ -263,7 +263,7 @@ class AutoSprite(pygame.sprite.Sprite, ABC):
     """
 
     def move_anim(self, duration: int or float, end_pos: tuple or Vector2,
-                  unit="px", anchor="tl", pivot="ctr", start_pos: tuple or None = None,
+                  unit=None, anchor=None, pivot=None, start_pos: tuple or None = None,
                   **kwargs) -> MoveAnimation or None:
 
         if self._current_move_anim and self._current_move_anim.running:
