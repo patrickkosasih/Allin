@@ -5,6 +5,7 @@ The module that controls the flow of a poker game. This module contains classes 
 poker game, so that every player action follows the rules of Texas Hold'em poker.
 """
 from dataclasses import dataclass
+from typing import Optional
 
 from rules.basic import *
 
@@ -49,6 +50,7 @@ class GameEvent:
     SHOWDOWN = 7
     RESET_HAND = 8
     RESET_PLAYERS = 9
+    JOIN_MID_GAME = 10
 
     # Class fields
     code: int
@@ -68,12 +70,13 @@ class Player:
     """
 
     def __init__(self, game: "PokerGame", name: str, chips: int):
-        self.game = game
-        self.player_hand = None
+        self.game: "PokerGame" = game
+        self.player_hand: Optional["PlayerHand"] = None
+        self.leave_next_hand: bool = False
 
-        self.name = name
-        self.chips = chips
-        self.player_number = -2  # -2: Not assigned to any PokerGame
+        self.name: str = name
+        self.chips: int = chips
+        self.player_number: int = -2  # -2: Not assigned to any PokerGame
 
     def action(self, action_type: int, new_amount=0) -> GameEvent or None:
         """
@@ -185,9 +188,9 @@ class Hand:
         self.game = game
         self.players = [PlayerHand(hand=self, player_data=player) for player in game.players]
         # A list of `PlayerHand` instances based on the `PlayerData` list of the `PokerGame`.
-        self.winners: list[list] = []
-        # A list of sublists of `PlayerHand` objects who has won the hand. Each sublist contains the winner(s) of their
-        # respective pot. When there are no side pots, there is only one sublist.
+        self.winners: list[list[int]] = []
+        # A list of sublists of the player numbers of players who have won the hand. Each sublist contains the winner(s)
+        # of their respective pot. When there are no side pots, there is only one sublist.
 
         self.pots: list[int] = [0]
         self.current_round_bets: int = 0
@@ -201,11 +204,14 @@ class Hand:
         self.blinds: tuple[int, int] = (self.current_turn, self.get_next_turn(1))
 
         self.round_finished: bool = False
-        self.deal_started: bool = False
+        self.hand_started: bool = False
         self.skip_next_rounds: bool = False
 
+        self.deal_cards()
+
+    def deal_cards(self):
         """
-        Deal cards to players
+        Deal two pocket cards to each player.
         """
         n_dealed_cards = len(self.players) * 2
 
@@ -220,7 +226,7 @@ class Hand:
         Start the current hand. Should only be called ONCE on the start of a hand.
         """
 
-        self.deal_started = True
+        self.hand_started = True
 
         """
         Player turn initialization and blinds
@@ -256,7 +262,7 @@ class Hand:
             return ActionResult.ROUND_ALREADY_ENDED
         elif self.winners:
             return ActionResult.HAND_ALREADY_ENDED
-        elif not self.deal_started:
+        elif not self.hand_started:
             return ActionResult.HAND_NOT_STARTED_YET
 
         player: PlayerHand = self.get_current_player()
@@ -285,6 +291,7 @@ class Hand:
 
                 # If everyone except one player folds, then that player wins.
                 if sum(not player.folded for player in self.players) == 1:
+                    action_broadcast.next_player = -1
                     self.showdown()
 
             case Actions.CALL:   # Check/call
@@ -367,6 +374,7 @@ class Hand:
             return
 
         assert sum(x.current_round_spent for x in self.players) == self.current_round_bets, "bet amount sums must match"
+
         prev_total_pot = sum(self.pots)
         prev_round_bets = self.current_round_bets
 
@@ -511,7 +519,7 @@ class Hand:
             winner.winnings = sum(self.pots) + self.current_round_bets
             winner.player_data.chips += winner.winnings
             winner.pots_won = [0]
-            self.winners = [[winner]]
+            self.winners = [[winner.player_data.player_number]]
 
             self.broadcast(GameEvent(GameEvent.SHOWDOWN, -1, -1, ""))
             return
@@ -547,12 +555,14 @@ class Hand:
         equal hand ranking overall score to the `current_pot_winners` list, similar to the "find max number"
         algorithm.
         """
-        self.winners = [[] for _ in range(len(self.pots))]
+        self.winners: list[list[int]] = [[] for _ in self.pots]
         current_pot_winners = []
 
         win_score = 0
         for pot_number, new_pot_participants in list(enumerate(eligibility_group))[::-1]:
             for player in new_pot_participants:
+                player: PlayerHand
+
                 score = player.hand_ranking.overall_score
 
                 if score > win_score:
@@ -560,7 +570,7 @@ class Hand:
                     current_pot_winners = []
 
                 if score >= win_score:
-                    current_pot_winners.append(player)
+                    current_pot_winners.append(player.player_data.player_number)
 
             self.winners[pot_number] = current_pot_winners.copy()
 
@@ -570,7 +580,9 @@ class Hand:
         for pot_number, pot_winners in enumerate(self.winners):
             prize = self.pots[pot_number] // len(pot_winners)
 
-            for winner in pot_winners:
+            for winner_number in pot_winners:
+                winner: PlayerHand = self.players[winner_number]
+
                 winner.pots_won.append(pot_number)
                 winner.winnings += prize
                 winner.player_data.chips += prize
@@ -641,10 +653,10 @@ class PokerGame:
         self.game_in_progress: bool = False
         self.ready_for_next_hand: bool = False
 
-        self.hand: Hand or None = None
+        self.hand: Optional[Hand] = None
 
     def start_game(self):
-        self.prepare_next_hand(cycle_dealer=True)
+        self.prepare_next_hand(cycle_dealer=False)
         self.new_hand()
 
     def new_hand(self):
@@ -666,7 +678,7 @@ class PokerGame:
             self.game_in_progress = False
             return False
 
-    def prepare_next_hand(self, cycle_dealer=True) -> None:
+    def prepare_next_hand(self, cycle_dealer=True) -> bool:
         """
         Reset the hand and prepare for the next hand: cycle the dealer, check the players' amount of chips, and remove
         any players that are bankrupt.
@@ -676,30 +688,38 @@ class PokerGame:
         self.ready_for_next_hand = True
 
         """
+        Mark bankrupt players as leaving next hand
+        """
+        for player in self.players:
+            if player.chips <= 0:
+                player.player_number = -2
+                player.leave_next_hand = True
+
+        should_reset_players = any(x.leave_next_hand for x in self.players)
+
+        """
         Cycle dealer
         """
         if cycle_dealer:
             while True:
                 self.dealer = (self.dealer + 1) % len(self.players)
-                if self.players[self.dealer].chips > 0:
+                if not self.players[self.dealer].leave_next_hand:
                     break
 
-            self.dealer -= sum(x.chips <= 0 for x in self.players[:self.dealer])
+            self.dealer -= sum(x.leave_next_hand for x in self.players[:self.dealer])
 
         """
-        Remove bankrupt players
+        Remove players who are leaving
         """
-        bankrupt = [player for player in self.players if player.chips <= 0]
-        self.players = [player for player in self.players if player.chips > 0]
+        self.players = [player for player in self.players if not player.leave_next_hand]
 
         """
         Update player numbers
         """
-        for x in bankrupt:
-            x.player_number = -2
-
         for i, player in enumerate(self.players):
             player.player_number = i
+
+        return should_reset_players
 
     def on_event(self, event):
         """
@@ -709,7 +729,8 @@ class PokerGame:
 
     def broadcast(self, broadcast: GameEvent) -> None:
         """
-        Broadcast a `GameEvent` to all `Player` objects by calling their `receive_event` methods.
+        Broadcast a `GameEvent` to all `Player` objects and the `PokerGame` self by calling their `receive_event` and
+        `on_event` methods.
         """
         self.on_event(broadcast)
 

@@ -81,6 +81,9 @@ class AutoRect(pygame.rect.Rect):
         elif size_unit not in self.VALID_UNITS:
             raise ValueError(f"invalid size unit: {size_unit}")
 
+        if not parent_rect:
+            parent_rect = pygame.Rect(0, 0, *pygame.display.get_window_size())
+
         if size_unit == "%":
             w, h = elementwise_mult(parent_rect.size, (w / 100, h / 100))
         elif size_unit == "%w":
@@ -260,10 +263,10 @@ class AutoSprite(pygame.sprite.Sprite, ABC):
     """
 
     def move_anim(self, duration: int or float, end_pos: tuple or Vector2,
-                  unit=None, anchor=None, pivot=None, start_pos: tuple or None = None,
+                  unit=None, anchor=None, pivot=None, start_pos: tuple or None = None, stop_other_anims=True,
                   **kwargs) -> MoveAnimation or None:
 
-        if self._current_move_anim and self._current_move_anim.running:
+        if stop_other_anims and self._current_move_anim and self._current_move_anim.running:
             self._current_move_anim.stop()
 
         if duration > 0:

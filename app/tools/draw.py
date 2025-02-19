@@ -82,3 +82,8 @@ def draw_rounded_rect(surface: pygame.Surface, rect: pygame.Rect,
         canvas.set_alpha(alpha)
         surface.blit(canvas, (0, 0))
 
+
+def draw_circle(surface: pygame.Surface, x: int, y: int, r: int, color: tuple):
+    r -= 1
+    pygame.gfxdraw.aacircle(surface, x, y, r, color)
+    pygame.gfxdraw.filled_circle(surface, x, y, r, color)

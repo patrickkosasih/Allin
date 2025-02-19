@@ -1,12 +1,12 @@
 """
-rules/singleplayer.py
+app/rules_interface/singleplayer.py
 
 The singleplayer module is used to interface the game flow engine from the main app on singleplayer games.
 """
 
 from app.tools import app_timer
 from rules.game_flow import *
-from rules.interface import *
+from app.rules_interface.interface import *
 
 
 class Bot(Player):
@@ -60,7 +60,7 @@ class SingleplayerGame(InterfaceGame):
     def __init__(self, n_bots: int, starting_chips: int, sb_amount: int):
         super().__init__()
 
-        self.client_player = ClientPlayer(self, "YOU", starting_chips)
+        self.client_player = Player(self, "YOU", starting_chips)
         self.bots = [Bot(self, f"Bot {i + 1}", starting_chips) for i in range(n_bots)]
         self.players: list[Player] = [self.client_player] + self.bots
 
@@ -96,8 +96,7 @@ class SingleplayerGame(InterfaceGame):
                 self.timer_group.new_timer(10, self.broadcast, (GameEvent(GameEvent.RESET_HAND),))
 
             case GameEvent.RESET_HAND:
-                reset_players = any(x.chips <= 0 for x in self.players)
-                self.prepare_next_hand()
+                reset_players = self.prepare_next_hand()
 
                 if reset_players:
                     self.timer_group.new_timer(2.5, self.broadcast, (GameEvent(GameEvent.RESET_PLAYERS),))

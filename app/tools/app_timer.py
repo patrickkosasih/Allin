@@ -6,8 +6,9 @@ The app timer module contains classes that provides an interface to time and sch
 Instead of running a new thread, The scheduling of function calls are done synchronously to the main thread. This is
 done by updating the timer groups (the global `default_group` and other local timer groups) every game tick.
 """
+import threading
 from abc import ABC, abstractmethod
-from typing import Callable, Generator
+from typing import Callable, Generator, Any
 
 
 class TimingUtility(ABC):
@@ -118,41 +119,6 @@ class Sequence(TimingUtility):
                 action()
             else:
                 self.delay_left += action
-
-
-class Coroutine(TimingUtility):
-    """
-    The Coroutine class enables adding sleep delays in functions by having a generator function yield how many seconds
-    to wait for.
-    """
-
-    def __init__(self, target: Generator[int or float, None, None], group: None or "TimerGroup" = None):
-        """
-        Params:
-
-        :param target: A generator function that will be run by the coroutine. To pause the function, it must yield a
-                       number (int or float) that represents how many seconds the function will wait.
-
-        :param group: Which timer group to put the coroutine in. If set to None then the timer would be automatically
-                      placed in the global `default_group`, updated in the game's main loop.
-        """
-        super().__init__(group)
-
-        self.generator_iter = iter(target)
-
-    def on_delay_finish(self):
-        try:
-            ret = next(self.generator_iter)
-        except StopIteration:
-            self.finished = True
-            return
-
-        if not ret:
-            pass
-        elif type(ret) is int or type(ret) is float:
-            self.delay_left += ret
-        else:
-            raise TypeError(f"invalid yield return value from the coroutine's generator: {ret}")
 
 
 class TimerGroup:

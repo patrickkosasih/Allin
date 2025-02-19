@@ -4,7 +4,7 @@ import pygame
 from pygame import Vector2
 
 from app.shared import FontSave
-from app.tools import app_timer
+from app.tools import app_timer, app_async
 from app.widgets.widget import Widget, WidgetComponent
 from app.animations.interpolations import *
 
@@ -27,7 +27,7 @@ class WelcomeText(Widget):
         self.characters: list[WidgetComponent] = []
 
         self.init_characters()
-        app_timer.Coroutine(self.animate_characters(anim_duration, anim_interval))
+        app_async.Coroutine(self.animate_characters(anim_duration, anim_interval))
 
     def init_characters(self):
         # X position of the next character in the list.

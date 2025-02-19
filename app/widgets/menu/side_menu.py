@@ -8,6 +8,7 @@ from app.widgets.basic.button import CircularButton, Button
 from app.widgets.basic.panel import Panel
 from app.animations.interpolations import *
 from app.widgets.listeners import KeyboardListener
+from online.client.client_comms import ClientComms
 
 INGAME_MENU_COLOR = (10, 10, 10, 100)
 
@@ -57,11 +58,7 @@ class SideMenu(Panel, KeyboardListener):
         self.toggle_button.set_shown(True)
 
     def main_menu(self):
-        self.scene.app.change_scene_anim("mainmenu", cache_old_scene=False, duration=0.5)
-        self.scene.app.background_scene.background.fade_anim(0.25, 254)
-
-        audio.SoundGroup.stop_all_sounds()
-        app_timer.Timer(0.75, audio.MusicPlayer.play)
+        self.scene.app.leave_game()
 
     def quit_game(self):
         self.scene.app.quit()
