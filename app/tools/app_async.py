@@ -108,9 +108,11 @@ def run_as_serial_coroutine(func: Callable[Any, Generator]):
         if func_coroutine_running.setdefault(func, False):
             return
 
-        func_coroutine_running[func] = True
-        yield from func(*args, **kwargs)
-        func_coroutine_running[func] = False
+        try:
+            func_coroutine_running[func] = True
+            yield from func(*args, **kwargs)
+        finally:
+            func_coroutine_running[func] = False
 
     return run_as_coroutine(limited_func)
 

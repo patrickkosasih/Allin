@@ -19,7 +19,7 @@ class App:
     def __init__(self):
         pygame.init()
 
-        # pygame.key.set_repeat(500, 50)
+        pygame.key.set_repeat(500, 50)
         pygame.mixer.init()
         pygame.mixer.set_num_channels(32)
 
