@@ -1,5 +1,5 @@
 from app import app_settings
-from app.animations.interpolations import ease_out
+from app.animations.interpolations import ease_out, ease_in_out, linear
 from app.scenes.scene import Scene
 from app.shared import Layer, func_timer
 from app.widgets.basic.fps_counter import FPSCounter
@@ -28,12 +28,13 @@ class BackgroundScene(Scene):
         if not app_settings.main.get_value("background"):
             return
 
-        self.app.background_scene.background.set_pos(0, -100, "%", "mb", "mb")
-        self.app.background_scene.background.move_anim(3, (0, 0), "px", "ctr", "ctr",
-                                                       interpolation=lambda x: ease_out(x, power=2.5))
-        self.app.background_scene.background.fade_anim(4, 254)
-        # Setting the background's alpha to 255 drops the FPS a lot, but setting it anywhere below 255 doesn't, for some
-        # weird reason.
+        self.background.set_pos(0, -100, "%", "mb", "mb")
+        self.background.move_anim(3, (0, 0), "px", "ctr", "ctr",
+                                  interpolation=lambda x: ease_out(x, power=2.5))
+        self.background.fade_anim(3.5, 255,
+                                  interpolation=linear)
+        self.background.scale_anim(4.5, 1.0, 1.5,
+                                   interpolation=lambda x: ease_in_out(x, power=2.5))
 
     def update(self, dt):
         super().update(dt)
