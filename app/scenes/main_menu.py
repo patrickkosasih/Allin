@@ -5,12 +5,14 @@ from app.animations.fade import FadeColorAnimation
 from app.animations.interpolations import ease_out
 from app.scenes.scene import Scene
 from app.tools import app_timer, app_async
+from app.tools.names import generate_nickname
 from app.widgets.basic.button import Button
 from app.shared import *
 from app.widgets.basic.profile_pic import ProfilePic
 from app.widgets.basic.textbox import Textbox
 from app.widgets.menu.welcome_text import WelcomeText
 from app.widgets.widget import Widget
+from online.client.client_comms import ClientComms
 
 MAIN_MENU_BUTTON_COLOR = (24, 31, 37, 169)
 
@@ -46,8 +48,8 @@ class MainMenuScene(Scene):
         pf_size = 8
 
         self.name_textbox = Textbox(self, -pf_size - 2 * pf_margin, pf_margin, 35, pf_size, "%h", "tr", "tr",
-                                    text_str="your name.", label_hybrid=True, char_limit=20,
-                                    text_align="right", editing_text_align="middle")
+                                    text_str=app_settings.sep.get_value("nickname"), label_hybrid=True, char_limit=20,
+                                    text_align="right", editing_text_align="middle", call_on_deselect=self.update_name)
 
         self.profile_pic = ProfilePic(self, -pf_margin, pf_margin, pf_size, pf_size, "%h", "tr", "tr")
 
@@ -145,7 +147,7 @@ class MainMenuScene(Scene):
                 yield interval
 
     """
-    Button commands
+    Button commands and other GUI stuff
     """
 
     def singleplayer_click(self):
@@ -156,3 +158,12 @@ class MainMenuScene(Scene):
 
     def settings_click(self):
         self.app.change_scene_anim("settings")
+
+    def update_name(self):
+        if all(c == " " for c in self.name_textbox.text_str):  # If textbox is empty.
+            self.name_textbox.text_str = generate_nickname()
+
+        app_settings.sep.set_value("nickname", self.name_textbox.text_str)
+        app_settings.sep.save()
+
+        ClientComms.should_update_name = True

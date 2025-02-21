@@ -4,7 +4,8 @@ from typing import T, Callable
 
 
 class FieldType:
-    NO_WIDGET = 0
+    MANUAL_STR = 0
+
     NUMBER_PICKER = 1
     ITEM_PICKER = 2
     SLIDER = 3
@@ -46,6 +47,8 @@ class SettingField:
 
         Field type              Default value               Selection args              Format func
 
+        Manual string    ->     str                         -                           -
+
         Number Picker    ->     int or float                tuple: (min, max, step)     callable: (int or float) -> str
         Item Picker      ->     int (index of item list)    list: list of items         callable: (type of items) -> str
         Slider           ->     int or float                tuple: (min, max)           -
@@ -61,18 +64,22 @@ class SettingField:
         """
 
         """
-        Validate field_type and selection_args.
+        Validate `selection_args` based on `field_type`.
         
-        default_value is checked separately by calling the set_value method.
+        `default_value` is checked separately by calling the `set_value` method.
         """
         # region Validate
         match field_type:
+            case FieldType.MANUAL_STR:
+                if selection_args:
+                    raise ValueError("manual fields do not have selection args")
+
             case FieldType.NUMBER_PICKER:
                 if (type(selection_args) is not tuple or len(selection_args) != 3 or
                     any(type(x) is not int and type(x) is not float for x in selection_args)):
 
-                    raise ValueError("selection args for a number picker must be a tuple of 3 numbers: (min, max, step), "
-                                     f"got: {selection_args}")
+                    raise TypeError("selection args for a number picker must be a tuple of 3 numbers: (min, max, step), "
+                                    f"got: {selection_args}")
 
             case FieldType.ITEM_PICKER:
                 if type(selection_args) is not list:
@@ -87,7 +94,8 @@ class SettingField:
                         f"got: {selection_args}")
 
             case FieldType.TOGGLE_SWITCH:
-                ...
+                if selection_args:
+                    raise ValueError("toggle switches do not have selection args")
 
             case _:
                 raise ValueError(f"invalid field type id: {field_type}")
@@ -126,7 +134,8 @@ class SettingField:
                 value = False
             else:
                 raise ValueError(f"invalid boolean value for toggle switch: {value}")
-        else:
+
+        elif self._field_type != FieldType.MANUAL_STR:
             value = float(value)
             value = int(value) if value.is_integer() else value
 
@@ -134,6 +143,10 @@ class SettingField:
 
     def set_value(self, value):
         match self._field_type:
+            case FieldType.MANUAL_STR:
+                if type(value) is not str:
+                    raise TypeError(f"the value type for manual strings must be str, got: {value}")
+
             case (FieldType.NUMBER_PICKER, FieldType.SLIDER):
                 if type(value) is not int or type(value) is not float:
                     raise TypeError("the value type for number pickers and sliders must be either int or float, "
@@ -177,7 +190,7 @@ class SettingsData:
     using the configparser module.
     """
 
-    def __init__(self, fields: list[SettingField], save_path: str = "", auto_load=True):
+    def __init__(self, *fields: SettingField, save_path: str = "", auto_load=True):
         super().__init__()
 
         self._field_dict = {x.field_name: x for x in fields}

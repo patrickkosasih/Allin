@@ -1,5 +1,3 @@
-from typing import T
-
 from app.scenes.scene import Scene
 from app.shared import *
 from app.tools.settings_data import SettingsData, SettingField, FieldType
@@ -54,7 +52,7 @@ class SettingEntry(Widget):
         self.input_widget_code = widget_type
 
         match widget_type:
-            case FieldType.NO_WIDGET:
+            case FieldType.MANUAL_STR:
                 self.input_widget = None
 
             case FieldType.NUMBER_PICKER:
@@ -174,6 +172,8 @@ class SettingPanel(Panel):
         field: SettingField
 
         for field_name, field in self._settings_data.field_dict.items():
+            if field.field_type == FieldType.MANUAL_STR:
+                continue
             if field.new_section:
                 self.add_header(field.new_section, font_scale=0.85)
 

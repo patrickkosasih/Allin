@@ -127,11 +127,20 @@ class PlayerDisplay(Widget):
 
             case ComponentCodes.NAME_TEXT:
                 component.image = FontSave.get_font(3.5).render(self.player_data.name, True, DEFAULT_TEXT_COLOR)
-                component.rect = component.image.get_rect(center=((w + h_head / 2) / 2, 0.25 * h_head))
+
+                name_fit_ratio = component.image.get_width() / (self.head_base.rect.w - self.head_base.rect.h * 1.5)
+                if name_fit_ratio > 1:
+                    component.image = pygame.transform.smoothscale_by(component.image, 1 / name_fit_ratio)
+
+                component.rect = component.image.get_rect(center=((w + h_head * 0.75) / 2, 0.25 * h_head))
 
             case ComponentCodes.CHIPS_TEXT:
                 component.image = FontSave.get_font(3.5).render(f"${self.chips_text_val:,}", True, DEFAULT_TEXT_COLOR)
-                component.rect = component.image.get_rect(center=((w + h_head / 2) / 2, 0.75 * h_head))
+                # component.image.fill((0, 0, 0))
+
+                component.rect = component.image.get_rect(
+                    midtop=((w + h_head * 0.75) / 2, self.head_base.rect.centery)
+                )
 
             case ComponentCodes.PROFILE_PIC:
                 r = int(h_head / 2)

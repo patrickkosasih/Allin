@@ -1,3 +1,4 @@
+from app import app_settings
 from app.audio import MusicPlayer
 from app.scenes.game_scene import GameScene
 from app.scenes.scene import Scene
@@ -27,6 +28,10 @@ class MultiplayerMenuScene(Scene):
 
     @app_async.run_as_serial_coroutine
     def join(self, room_code):
+        if ClientComms.should_update_name:
+            yield from ClientComms.send_request(f"name {app_settings.sep.get_value('nickname')}")
+            ClientComms.should_update_name = False
+
         response = yield from ClientComms.send_request(f"join {room_code}")
 
         if response == "SUCCESS":

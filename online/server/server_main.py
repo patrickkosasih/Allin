@@ -47,7 +47,7 @@ class ClientHandler(socketserver.BaseRequestHandler):
         self.server: AllinServer
         self.server.clients.append(self)
 
-        self.name = f"Port {self.client_address[1]}"  # TODO Make this customizable later.
+        self.name = f"Port {self.client_address[1]}"
         self.current_room = None
         self.current_player = None
 
@@ -97,6 +97,13 @@ class ClientHandler(socketserver.BaseRequestHandler):
             case "echo":
                 self.send_basic_response(req_args)
 
+            case "name":
+                if all(x == " " for x in req_args):
+                    self.send_basic_response("ERROR invalid name")
+                else:
+                    self.name = req_args
+                    self.send_basic_response("SUCCESS")
+
             case "public":
                 self.send_basic_response("here are some public rooms bruv: <list of rooms>")
 
@@ -104,7 +111,6 @@ class ClientHandler(socketserver.BaseRequestHandler):
                 self.send_basic_response(f"here is some info regarding the room with code {req_args}: <some room info>")
 
             case "join":
-                # self.send_basic_response(f"you joined room {req_args}")
                 try:
                     self.join_room(req_args)
                     self.send_basic_response("SUCCESS")

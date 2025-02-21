@@ -1,4 +1,6 @@
 import os
+
+from app.tools.names import generate_nickname
 from app.tools.settings_data import SettingField, SettingsData, FieldType
 from app.shared import SAVE_FOLDER_PATH
 
@@ -19,7 +21,7 @@ App Settings
     * Start-up sequence
     * Background
 """
-main = SettingsData([
+main = SettingsData(
     # region Audio
     SettingField("music_volume", "Music Volume", FieldType.SLIDER,
                  0.75, (0.0, 1.0),
@@ -59,4 +61,12 @@ main = SettingsData([
                                         "all_always": "Entire hand always"}[x]),
     # endregion
 
-], os.path.join(SAVE_FOLDER_PATH, "app_settings.ini"))
+    save_path=os.path.join(SAVE_FOLDER_PATH, "app_settings.ini")
+)
+
+
+sep = SettingsData(
+    SettingField("nickname", "Nickname", FieldType.MANUAL_STR, generate_nickname()),
+
+    save_path=os.path.join(SAVE_FOLDER_PATH, "separate_settings.ini")
+)

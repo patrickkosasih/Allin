@@ -16,7 +16,8 @@ class Textbox(MouseListener, KeyboardListener):
     def __init__(self, parent, *rect_args,
                  text_str="", font: pygame.font.Font = None,
                  char_limit=100, adaptive_char_limit=True, input_validator: Callable[[str], bool] = str.isprintable,
-                 text_align="middle", editing_text_align="", label_hybrid=False):
+                 text_align="middle", editing_text_align="", label_hybrid=False,
+                 call_on_deselect: Callable[[], None] = lambda: None):
 
         """
 
@@ -51,12 +52,13 @@ class Textbox(MouseListener, KeyboardListener):
         self._adaptive_char_limit = adaptive_char_limit
         self._input_validator = input_validator
 
-        self._label_hybrid = label_hybrid
         self._editing = False
         self._caret_blink = 0.0
 
         self._text_align = text_align
         self._editing_text_align = editing_text_align if editing_text_align else self._text_align
+        self._label_hybrid = label_hybrid
+        self._call_on_deselect = call_on_deselect
 
         self._prev_hover = False
         self._prev_editing = False
@@ -64,22 +66,22 @@ class Textbox(MouseListener, KeyboardListener):
         """
         Widget components
         """
-        self.base = WidgetComponent(self, 0, 0, 100, 100, "%", "tl", "tl")
-        draw_rounded_rect(self.base.image, pygame.Rect(0, 0, *self.base.rect.size), DEFAULT_BG_COLOR)
+        self._base = WidgetComponent(self, 0, 0, 100, 100, "%", "tl", "tl")
+        draw_rounded_rect(self._base.image, pygame.Rect(0, 0, *self._base.rect.size), DEFAULT_BG_COLOR)
         if label_hybrid:
-            self.base.image.set_alpha(0)
+            self._base.image.set_alpha(0)
 
-        self.text = WidgetComponent(self, 0, 0, 0, 0, "px", "ctr", "ctr")
+        self._text = WidgetComponent(self, 0, 0, 0, 0, "px", "ctr", "ctr")
         self.redraw_text()
 
-        self.caret = WidgetComponent(self, 0, 0, 2, self.text.rect.h * 0.75, "px", "ctr", "ctr")
-        self.caret.image.fill((255, 255, 255, 128))
-        self.caret.image.set_alpha(0)
+        self._caret = WidgetComponent(self, 0, 0, 2, self._text.rect.h * 0.75, "px", "ctr", "ctr")
+        self._caret.image.fill((255, 255, 255, 128))
+        self._caret.image.set_alpha(0)
 
-        self.underline = WidgetComponent(self, 0, 0, 0, 2, "px", "ctr", "ctr")
+        self._underline = WidgetComponent(self, 0, 0, 0, 2, "px", "ctr", "ctr")
 
     def redraw_text(self):
-        self.text.image = self._font.render(self._text_str, True, DEFAULT_FG_COLOR)
+        self._text.image = self._font.render(self._text_str, True, DEFAULT_FG_COLOR)
         self.set_pos_from_alignment()
 
     def set_pos_from_alignment(self, duration=0.0):
@@ -88,11 +90,11 @@ class Textbox(MouseListener, KeyboardListener):
 
         match align:
             case "middle":
-                self.text.move_anim(duration, (0, 0), "%h", "ctr", "ctr", stop_other_anims=False)
+                self._text.move_anim(duration, (0, 0), "%h", "ctr", "ctr", stop_other_anims=False)
             case "left":
-                self.text.move_anim(duration, (margin, 0), "%h", "ml", "ml", stop_other_anims=False)
+                self._text.move_anim(duration, (margin, 0), "%h", "ml", "ml", stop_other_anims=False)
             case "right":
-                self.text.move_anim(duration, (-margin, 0), "%h", "mr", "mr", stop_other_anims=False)
+                self._text.move_anim(duration, (-margin, 0), "%h", "mr", "mr", stop_other_anims=False)
 
     def on_click(self, event):
         self._editing = True
@@ -102,6 +104,7 @@ class Textbox(MouseListener, KeyboardListener):
 
         if not self.hover:
             self._editing = False
+            self._call_on_deselect()
 
     def key_down(self, event):
         if not self._editing:
@@ -109,7 +112,7 @@ class Textbox(MouseListener, KeyboardListener):
 
         c = event.unicode
         textbox_not_full = (len(self._text_str) <= self._char_limit and
-                            (self._adaptive_char_limit and self.rect.w - self.text.rect.w >= self.rect.h))
+                            (self._adaptive_char_limit and self.rect.w - self._text.rect.w >= self.rect.h))
 
 
         if event.key == pygame.K_BACKSPACE:
@@ -120,6 +123,7 @@ class Textbox(MouseListener, KeyboardListener):
 
         elif event.key in (pygame.K_ESCAPE, pygame.K_RETURN, pygame.K_KP_ENTER):
             self._editing = False
+            self._call_on_deselect()
 
         elif textbox_not_full and self._input_validator(c):
             self._text_str += c
@@ -135,21 +139,21 @@ class Textbox(MouseListener, KeyboardListener):
         if self._label_hybrid:
             # Show/hide the underline
             if self.hover and not self._editing:
-                if self.underline.rect.w != self.text.rect.w:
+                if self._underline.rect.w != self._text.rect.w:
                     # Update the underline's size and position
-                    self.underline.rect.w = self.text.rect.w
-                    self.underline.image = pygame.Surface(self.underline.rect.size, pygame.SRCALPHA)
-                    self.underline.image.fill(DEFAULT_FG_COLOR)
+                    self._underline.rect.w = self._text.rect.w
+                    self._underline.image = pygame.Surface(self._underline.rect.size, pygame.SRCALPHA)
+                    self._underline.image.fill(DEFAULT_FG_COLOR)
 
-                self.underline.set_pos(self.text.rect.centerx, self.text.rect.top + self._font.get_ascent() + 2,
+                self._underline.set_pos(self._text.rect.centerx, self._text.rect.top + self._font.get_ascent() + 2,
                                        "px", "tl", "mt")
-                self.underline.image.set_alpha(255)
+                self._underline.image.set_alpha(255)
             else:
-                self.underline.image.set_alpha(0)
+                self._underline.image.set_alpha(0)
 
             # Show/hide the textbox base
             if self._prev_editing != self._editing:
-                self.base.fade_anim(0.25, 255 if self._editing else 0)
+                self._base.fade_anim(0.25, 255 if self._editing else 0)
 
         else:
             # Brighten the textbox
@@ -163,11 +167,11 @@ class Textbox(MouseListener, KeyboardListener):
             self._caret_blink += dt
             self._caret_blink %= 1
 
-            self.caret.rect.x = self.text.rect.right + 1
-            self.caret.image.set_alpha(255 if self._caret_blink < 0.5 else 0)
+            self._caret.rect.x = self._text.rect.right + 1
+            self._caret.image.set_alpha(255 if self._caret_blink < 0.5 else 0)
 
         elif self._prev_editing and not self._editing:
-            self.caret.image.set_alpha(0)
+            self._caret.image.set_alpha(0)
 
         """
         Switching alignment between editing and not editing

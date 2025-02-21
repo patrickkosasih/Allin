@@ -3,7 +3,7 @@ app/rules_interface/singleplayer.py
 
 The singleplayer module is used to interface the game flow engine from the main app on singleplayer games.
 """
-
+from app import app_settings
 from app.tools import app_timer
 from rules.game_flow import *
 from app.rules_interface.interface import *
@@ -60,7 +60,7 @@ class SingleplayerGame(InterfaceGame):
     def __init__(self, n_bots: int, starting_chips: int, sb_amount: int):
         super().__init__()
 
-        self.client_player = Player(self, "YOU", starting_chips)
+        self.client_player = Player(self, app_settings.sep.get_value("nickname"), starting_chips)
         self.bots = [Bot(self, f"Bot {i + 1}", starting_chips) for i in range(n_bots)]
         self.players: list[Player] = [self.client_player] + self.bots
 

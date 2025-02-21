@@ -46,6 +46,8 @@ class ClientComms:
     current_game: "MultiplayerGame" = None
     game_event_queue: list[GameEvent or GameSyncEvent] = []
 
+    should_update_name = True
+
     @staticmethod
     def connect(threaded=True):
         if ClientComms.online or ClientComms.connecting:
@@ -82,6 +84,7 @@ class ClientComms:
 
         ClientComms.client_socket = None
         ClientComms.online = False
+        ClientComms.should_update_name = True
 
         log("Disconnected.")
 
@@ -135,9 +138,6 @@ class ClientComms:
 
         req_time = time.time_ns()
         ClientComms.request_queue.append(req_time)
-
-        # FIXME when client gets disconnected from server because of the server shutting down, it can't join again for
-        #  some reason haiya, idk the `run_as_serial_coroutine` decorator thingy may be the culprit though
 
         # Wait until it's the call's turn on the request queue.
         while ClientComms.request_queue[0] != req_time:
