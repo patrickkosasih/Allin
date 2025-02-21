@@ -47,7 +47,7 @@ class App:
         Side scenes: Background and overlay
         """
         self.solid_bg_color = "#123456"
-        self.show_background = app_settings.main.get_value("background")
+        self.show_background = app_settings.main.get_value("show_bg")
 
         self.background_scene = BackgroundScene(self)
         self.overlay_scene = OverlayScene(self)
@@ -188,7 +188,7 @@ class App:
             app_async.Coroutine(ClientComms.send_request("leave"))
 
         self.scene.app.change_scene_anim("mainmenu", cache_old_scene=False, duration=0.5)
-        self.scene.app.background_scene.background.fade_anim(0.25, 254)
+        self.scene.app.background_scene.tint.fade_anim(0.25, 0)
 
         audio.SoundGroup.stop_all_sounds()
         app_timer.Timer(0.75, audio.MusicPlayer.play)
@@ -200,7 +200,7 @@ class App:
         self.fps_limit = app_settings.main.get_value("fps_limit")
         self.windowed = app_settings.main.get_value("windowed")
         self.window_resolution = app_settings.main.get_value("window_resolution")
-        self.show_background = app_settings.main.get_value("background")
+        self.show_background = app_settings.main.get_value("show_bg")
 
         update_window = (force_update_window or prev_windowed != self.windowed or
                          (prev_resolution != self.window_resolution and self.windowed))

@@ -39,7 +39,7 @@ class GameScene(Scene):
         """
         Miscellaneous GUI
         """
-        self.app.background_scene.background.fade_anim(2, 128)
+        self.app.background_scene.tint.fade_anim(2, 128)
 
         self.side_menu_button = SideMenuButton(self, 1.5, 1.5, 4, "%h", "tl", "tl")
         self.side_menu = SideMenu(self, 0, 0, 25, 100, "%", "ml", "ml", toggle_button=self.side_menu_button)

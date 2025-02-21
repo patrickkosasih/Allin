@@ -4,7 +4,6 @@ from app import app_settings, audio
 from app.scenes.scene import Scene
 from app.shared import load_image
 from app.widgets.basic.button import CircularButton
-from app.widgets.basic.game_bg import GameBackground
 from app.widgets.menu.setting_panel import SettingPanel, SettingEntry
 
 
@@ -23,7 +22,7 @@ class SettingsScene(Scene):
         self.setting_panel.entries["sfx_volume"].call_on_change = audio.SoundGroup.update_volume
         self.setting_panel.entries["music_volume"].call_on_change = audio.MusicPlayer.update_volume
 
-        for x in ("windowed", "window_resolution", "fps_limit", "background"):
+        for x in ("windowed", "window_resolution", "fps_limit", "show_bg"):
             self.setting_panel.entries[x].call_on_change = self.on_display_change
 
 

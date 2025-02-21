@@ -48,7 +48,7 @@ main = SettingsData([
                  True,
                  new_section="Interface"),
 
-    SettingField("background", "Background Art", FieldType.TOGGLE_SWITCH,
+    SettingField("show_bg", "Background Art", FieldType.TOGGLE_SWITCH,
                  True),
 
     SettingField("card_highlights", "Card Highlights", FieldType.ITEM_PICKER,
