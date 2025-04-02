@@ -188,7 +188,7 @@ class App:
             app_async.Coroutine(ClientComms.send_request("leave"))
 
         self.scene.app.change_scene_anim("mainmenu", cache_old_scene=False, duration=0.5)
-        self.scene.app.background_scene.tint.fade_anim(0.25, 0)
+        self.background_scene.bg_renderer.fade_anim(0.5, 255)
 
         audio.SoundGroup.stop_all_sounds()
         app_timer.Timer(0.75, audio.MusicPlayer.play)

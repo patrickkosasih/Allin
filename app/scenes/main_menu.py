@@ -104,7 +104,7 @@ class MainMenuScene(Scene):
         self.app.solid_bg_color = (0, 0, 0)
 
         if app_settings.main.get_value("show_bg"):
-            pass
+            self.app.background_scene.bg_renderer.set_alpha(0)
 
         else:
             FadeColorAnimation(6, (0, 0, 0), (18, 52, 86),  # end_color = "#123456"
@@ -123,7 +123,6 @@ class MainMenuScene(Scene):
 
             1.5, lambda: self.welcome_text.delete("welcome_text"),
                  lambda: setattr(self.app, "solid_bg_color", "#123456"),
-                 lambda: self.app.background_scene.tint.image.fill("#123456")
         ])
 
     def set_shown_by_fade(self, shown: bool, duration: float, interval: float):
