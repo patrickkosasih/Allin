@@ -17,7 +17,7 @@ class Button(MouseListener):
                  text_str="", text_color=(255, 255, 255), font: pygame.font.Font = None,
                  b_color=None, b_thickness=0, rrr=-1,
                  icon: pygame.Surface or None = None, icon_size: float = 1.0,
-                 text_align="middle", icon_align="left", text_align_offset=0):
+                 text_align="middle", icon_align="left", text_align_offset=0, nudge_by_icon=True):
 
         """
         Parameters:
@@ -41,6 +41,9 @@ class Button(MouseListener):
         :param icon_align: The alignment of the icon. Possible alignments: "left" (default), "right", "middle".
         :param text_align_offset: The offset of the text when it is aligned at the top or bottom.
                                   Text y pos = Original text y pos +- (Button height * Text align offset).
+
+        :param nudge_by_icon: If set to true then the text is slightly moved to the left/right so that it's also centered
+                              based on the icon. idfk man
         """
 
         super().__init__(parent, *rect_args)
@@ -61,6 +64,7 @@ class Button(MouseListener):
         self.text_color = text_color
         self.rrr = rrr
         self._brightness = None
+        self.nudge_by_icon = nudge_by_icon
 
         """
         Components
@@ -69,6 +73,14 @@ class Button(MouseListener):
         # Base
         self.base = WidgetComponent(self, 0, 0, 100, 100, "%", "ctr", "ctr")
         self.draw_base()
+
+        # Icon
+        self.icon = WidgetComponent(self, 0, 0, 0, 0, "%", "ml", "ml")
+
+        self.icon_size = icon_size
+        self.icon_align = icon_align
+
+        self.set_icon(icon, icon_size)
 
         # Text
         self.text = WidgetComponent(self, 0, 0, 100, 100, "%", "ctr", "ctr")
@@ -79,14 +91,6 @@ class Button(MouseListener):
         self.text_align_offset = text_align_offset
 
         self.set_text(self.text_str)
-
-        # Icon
-        self.icon = WidgetComponent(self, 0, 0, 0, 0, "%", "ml", "ml")
-
-        self.icon_size = icon_size
-        self.icon_align = icon_align
-
-        self.set_icon(icon, icon_size)
 
         self.draw()
 
@@ -101,6 +105,12 @@ class Button(MouseListener):
         self.text.image = self.font.render(self.text_str, True, self.text_color)
 
         x = self.rect.w / 2
+
+        if self.icon and self.nudge_by_icon:
+            if self.icon_align == "left":
+                x += (3.1415 / 8 - (1 - self.icon_size) / 2) * self.rect.h
+            elif self.icon_align == "right":
+                x -= (3.1415 / 8 - (1 - self.icon_size) / 2) * self.rect.h
 
         match self.text_align:
             case "top":     y = self.text.image.get_height() / 2 + self.rect.h * self.text_align_offset

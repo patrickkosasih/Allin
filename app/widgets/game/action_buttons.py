@@ -79,6 +79,12 @@ class SideTextedButton(Button):
         self.side_text.image = FontSave.get_font(3).render(side_text_str, True, color)
         self.side_text.rect = self.side_text.image.get_rect(midright=(w - h / 2, h / 2))
 
+        # Only nudge by icon if side text is empty
+        prev_nudge_by_icon = self.nudge_by_icon
+        self.nudge_by_icon = side_text_str == ""
+        if self.nudge_by_icon != prev_nudge_by_icon:
+            self.set_text(self.text_str)
+
     def update_all_in(self, dt):
         _, _, w, h = self.rect
 
