@@ -48,7 +48,8 @@ class MainMenuScene(Scene):
         pf_size = 8
 
         self.name_textbox = Textbox(self, -pf_size - 2 * pf_margin, pf_margin, 35, pf_size, "%h", "tr", "tr",
-                                    text_str=app_settings.sep.get_value("nickname"), label_hybrid=True, char_limit=20,
+                                    text_str=app_settings.sep.get_value("nickname"), placeholder="Your Name Here",
+                                    label_hybrid=True, char_limit=20,
                                     text_align="right", editing_text_align="middle", call_on_deselect=self.update_name)
 
         self.profile_pic = ProfilePic(self, -pf_margin, pf_margin, pf_size, pf_size, "%h", "tr", "tr")
@@ -160,8 +161,8 @@ class MainMenuScene(Scene):
         self.app.change_scene_anim("settings")
 
     def update_name(self):
-        if all(c == " " for c in self.name_textbox.text_str):  # If textbox is empty.
-            self.name_textbox.text_str = generate_nickname()
+        # if all(c == " " for c in self.name_textbox.text_str):  # If textbox is empty.
+        #     self.name_textbox.text_str = generate_nickname()
 
         app_settings.sep.set_value("nickname", self.name_textbox.text_str)
         app_settings.sep.save()

@@ -226,7 +226,7 @@ class CircularButton(Button):
         """
         Draw a circle instead of a rounded rectangle for the button's base.
         """
-        r = int(self.rect.h / 2)
+        r = int(self.rect.h / 2) - 1
         pygame.gfxdraw.aacircle(self.base.image, r, r, r, self.color)
         pygame.gfxdraw.filled_circle(self.base.image, r, r, r, self.color)
 
