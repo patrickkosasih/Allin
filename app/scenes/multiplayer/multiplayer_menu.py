@@ -28,29 +28,17 @@ class MultiplayerMenuScene(Scene):
                                           icon=load_image("assets/sprites/menu icons/back.png"),
                                           icon_size=0.8)
 
-        self.search_textbox = Textbox(self, -37.5, -40, 25, 8, "%", "ctr", "tl", placeholder="Enter Game ID",
-                                      input_validator=str.isalpha, input_converter=str.upper)
+        self.room_code_textbox = Textbox(self, -12.5, -4.5, 25 - (0.5 + 8) * (9 / 16), 8, "%", "ctr", "ml",
+                                         font=FontSave.get_font(5), placeholder="Enter Game ID", char_limit=4,
+                                         input_validator=str.isalpha, input_converter=str.upper)
 
-        self.create_room_button = Button(self, 37.5, -40, 20, 8, "%", "ctr", "tr",
+        self.join_button = CircularButton(self, 12.5, -4.5, 4, "%", "ctr", "mr",
+                                          icon=load_image("assets/sprites/action icons/confirm bet.png"),
+                                          icon_size=0.75, command=lambda: self.join(self.room_code_textbox.text_str))
+
+        self.create_room_button = Button(self, 0, 4.5, 25, 8, "%", "ctr", "ctr",
                                          text_str="Create Room", icon=load_image("assets/sprites/misc/plus.png"),
                                          icon_size=0.75, font=FontSave.get_font(5), nudge_by_icon=True)
-
-        self.refresh_button = CircularButton(self, -37.5, -40, 4, "%", "ctr", "tl",
-                                             icon=load_image("assets/sprites/menu icons/refresh.png"),
-                                             icon_size=0.75)
-
-        self.online_settings_button = CircularButton(self, -37.5, -40, 4, "%", "ctr", "tl",
-                                                     icon=load_image("assets/sprites/menu icons/settings.png"),
-                                                     icon_size=0.75)
-
-        self.rooms_panel = RoomsPanel(self, 0, 40, 75, 70, "%", "ctr", "mb",
-                                      base_color=(24, 31, 37, 200),
-                                      base_radius=5, pack_height=12)
-
-        # Alignment thingy for pixel perfect margins between the buttons because of my OCD.
-        d_pos = Vector2(self.rooms_panel.rect.top - self.search_textbox.rect.bottom, 0)
-        self.refresh_button.set_pos(*self.create_room_button.get_pos("px", "tl", "ml") - d_pos, "px", "tl", "mr")
-        self.online_settings_button.set_pos(*self.refresh_button.get_pos("px", "tl", "ml") - d_pos, "px", "tl", "mr")
 
     @app_async.run_as_serial_coroutine
     def join(self, room_code):

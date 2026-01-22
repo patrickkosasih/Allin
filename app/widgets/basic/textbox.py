@@ -121,7 +121,7 @@ class Textbox(MouseListener, KeyboardListener):
             return
 
         c = event.unicode
-        textbox_not_full = (len(self._text_str) <= self._char_limit and
+        textbox_not_full = (len(self._text_str) < self._char_limit and
                             (self._adaptive_char_limit and self.rect.w - self._text.rect.w >= self.rect.h))
 
         if event.key == pygame.K_BACKSPACE:

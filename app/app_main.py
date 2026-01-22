@@ -3,7 +3,7 @@ from typing import Callable
 import pygame
 
 from app import audio, app_settings
-from app.scenes.multiplayer_menu import MultiplayerMenuScene
+from app.scenes.multiplayer.multiplayer_menu import MultiplayerMenuScene
 from app.scenes.settings_scene import SettingsScene
 from app.scenes.side_scenes import BackgroundScene, OverlayScene
 from app.scenes.singleplayer_menu import SingleplayerMenuScene

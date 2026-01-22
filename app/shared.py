@@ -28,7 +28,7 @@ VERSION_TEXT = "Allin v0.5.0"
 if not getattr(sys, "frozen", False):
     VERSION_TEXT += " (Uncompiled/Development Build)"
 
-SAVE_FOLDER_PATH = os.path.join(os.getenv("localappdata"), "Allin") if os.getenv("localappdata") else "./save"
+SAVE_FOLDER_PATH = os.path.join(os.getenv("localappdata"), "Allin") if os.getenv("localappdata") else "./.save"
 if not os.path.isdir(SAVE_FOLDER_PATH):
     os.mkdir(SAVE_FOLDER_PATH)
 

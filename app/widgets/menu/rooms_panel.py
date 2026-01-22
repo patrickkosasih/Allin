@@ -7,4 +7,6 @@ class RoomDisplay(Widget):
 
 
 class RoomsPanel(Panel):
-    pass
+    def __init__(self, parent, *rect_args, **kwargs):
+        super().__init__(parent, *rect_args, **kwargs)
+
